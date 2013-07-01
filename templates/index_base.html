@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block detail %}
+<div id="detail">
+      <div id="main_menu">
+        <span>
+          <h4 class="main_menu_item main_menu_selected"
+          style="display: inline;"><a href="#"> Room</a></h4>
+          <h4 class="main_menu_item" style="display: inline; "><a href="#">Tasks/Todo</a></h4>
+        </span>
+      </div> <!-- main_menu -->
+      <div id="left_area">
+        {% block left_area %}
+        {% endblock %}
+      </div> <!-- left_area -->
+    </div> <!-- detail -->
+{% endblock %}

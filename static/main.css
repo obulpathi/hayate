@@ -1,0 +1,43 @@
+body
+{
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    color: #020252;
+    background: url("background.png") repeat scroll transparent;
+}
+p,a,h1,h2,h3,h4,h5,h6
+{
+    color: inherit;
+    text-decoration: none;
+    margin: 0px;
+}
+#body_contents
+{
+    width: 800px;
+    margin: auto;
+    position: relative;
+    min-height: 800px;
+}
+#header { height: 50px; }
+#left_header { display: inline; float: left; }
+#right_header { display: inline; float: right; }
+#detail { position: absolute; }
+#main_menu { position: relative; height: 20px; border-radius: 5px 5px 0 0; background-color: #D0D0DD; }
+#left_area { position: relative; float: left; }
+#right_area
+{
+    position: relative; width: 200px; float: right; border: gray solid;
+    border-radius: 3px;
+    border-width: 2px;
+}
+#room_feed { width: 500px; background: white; width: 600px; height: 400px; overflow: auto; }
+.heading { text-align: center; }
+#footer { bottom: 0px; position: absolute; text-align: center; width: 100%; }
+.main_menu_selected { background-color: #A599FF; border-radius: 5px 5px 0 0; height: 20px; padding: 0 0 2px 0; }
+.main_menu_item { padding: 0 5px; }
+#login_form { position: absolute; left: 20%; }
+#logout_link
+{
+    border: none;
+    backgroud: none; text-decoration: underline; cursor: pointer;
+}

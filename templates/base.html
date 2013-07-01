@@ -1,0 +1,37 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+	<title>Hayate - Virtual War Room</title>
+	<meta http-equiv="content-type" 
+		content="text/html;charset=utf-8" />
+
+    <!-- stylesheets-->
+      <link type="text/css" rel="stylesheet" href="/static/main.css" />
+</head>
+
+<body>
+  <div id="body_contents">
+    <div id="header">
+      <div id="left_header"><img src="/static/hayate.png"></div>
+      <div id="right_header">
+        {% if member %} Welcome! {{ member }} | <form method="post"
+          id="logout_form" action="/logout" style="display: inline;">
+          {% csrf_token %}
+          <input type="hidden" name="confirm" value="yes" />
+          <input type="submit" value="Logout" id="logout_link" />
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    {% block detail %}
+    {% endblock %}
+    
+    <div id="footer"><p>Copyright Balamurugan V R 2013</p></div>
+  </div> <!-- body_contents -->
+
+    <script type="text/javascript" src="/static/main.js"></script>
+</body>
+</html>

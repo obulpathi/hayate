@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block detail %}
+<div id="login_form">
+  <form method="post" action="/login">
+    {% csrf_token %}
+
+    <table border="0px">
+      <tr>
+        <td>User ID(Your email):</td>
+        <td><input type="email" name="email"/></td>    
+      </tr>
+      <tr>
+        <td>Password:</td>
+        <td><input type="password" name="password" ></td>        
+      </tr>
+      <tr>
+        <td colspan="2"><input type="submit" value="Login" /></td>
+      </tr>
+      <tr>
+        <td colspan="2">or <a href="/signup" style="text-decoration: underline;">Signup</a> for a new account!
+          It is easy and free!</td>
+      </tr>  
+    </table>
+  </form>
+</div>
+{% endblock %}

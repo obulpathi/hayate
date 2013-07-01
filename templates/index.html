@@ -1,0 +1,20 @@
+{% extends "index_base.html" %}
+
+{% block left_area %}
+<div id="room_feed">
+          <p>Hello world!!</p>
+        </div>
+        <input type="textarea" style="width: 200px; height: 100px;"
+                                                           id="usersays"/><input type="submit"
+                                                           onsubmit="return
+                                                                     false;"
+                                                           onclick="userSays()"
+                                                           value="Say"
+                                                           href="#"/><input type="submit"
+                                                                            onclick="userAsks()"
+                                                                            value="Ask"
+                                                                            onsubmit="return
+                                                           false;"
+                                                                            href="#"/>
+
+{% endblock %}
