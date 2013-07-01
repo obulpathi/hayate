@@ -1,16 +1,20 @@
-from google.appengine.ext import db
+from google.appengine.ext import ndb
 
-class User(db.Model):
-    username = db.StringProperty()
-    password = db.StringProperty()
-    email = db.StringProperty()
-    nickname = db.StringProperty()
+class User(ndb.Model):
+    username = ndb.StringProperty()
+    password = ndb.StringProperty()
+    email = ndb.StringProperty()
+    nickname = ndb.StringProperty()
 
-class Room(db.Model):
-    roomname = db.StringProperty()
+class Room(ndb.Model):
+    roomname = ndb.StringProperty()
+    admin = ndb.KeyProperty(kind=User)
 
-class Task(db.Model):
+class Task(ndb.Model):
     pass
 
-class Message(db.Model):
-    pass
+class Message(ndb.Model):
+    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    room = ndb.KeyProperty(kind=Room)
+    message = ndb.StringProperty()
+

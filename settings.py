@@ -42,3 +42,5 @@ INSTALLED_APPS = (
 )
 
 SECRET_KEY = '5a1ad81cebc1fd81d374438c11777562afff873e44a0d5042b0a85c3a4abba22'
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
