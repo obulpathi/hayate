@@ -5,9 +5,13 @@
     {% csrf_token %}
 
     <table border="0px">
+      {% if error %}
+      <tr colspan="2"><span style="color:red;">{{ error }}</span></tr>
+      {% endif %}
+
       <tr>
-        <td>User ID(Your email):</td>
-        <td><input type="email" name="email"/></td>    
+        <td>Email:</td>
+        <td><input type="email" name="email" {% if email %}value="{{ email }}"{% endif %}/></td>    
       </tr>
       <tr>
         <td>Password:</td>

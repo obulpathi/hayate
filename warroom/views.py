@@ -9,17 +9,7 @@ from django import forms
 
 from warroom import models
 from warroom import salt
-from warroom import library
-
-def return500():
-        response = HttpResponse()
-        response.status_code = 500
-        return response    
-
-def return400():
-        response = HttpResponse()
-        response.status_code = 400
-        return response    
+from warroom.library import HttpTextResponse, EmailInput
 
 # --------- decorators --------
 # factored out from rietveld/codereview/views.py - http://codereview.appspot.com for more
@@ -36,14 +26,14 @@ def login_required(func):
 def post_required(func):
     def post_wrapper(request, *args, **kwds):
         if request.method != 'POST':
-            return return400()
+            return HttpTextResponse('Only POST is supported in this URL', 405)
         else:
             return func(request, *args, **kwds)
     return post_wrapper    
 
 # --------- forms ---------   
 class SignUpForm(forms.Form):
-    email = forms.EmailField(label='Email Id(This is your user id):')
+    email = forms.EmailField(label='Email:', widget=EmailInput(attrs={}))
     password = forms.CharField(label='Password:', widget=forms.PasswordInput)
     password1 = forms.CharField(label='Password confirmation:', widget=forms.PasswordInput)
     username = forms.CharField(label='Your name:')
@@ -51,7 +41,8 @@ class SignUpForm(forms.Form):
 
 @login_required
 def index(request):
-    return render(request, 'index.html', {'member': 'Bala'})
+    return render(request, 'index.html', {'member': 'Bala',
+                                          'room': 'UADA'})
 
 def login(request):
     if request.method == 'GET':
@@ -63,21 +54,24 @@ def login(request):
         q = models.User.query(models.User.email == email )
         u = q.get()
 
+        if u is None:
+            return render(request, 'login.html', {'error': 'Invalid email! You might want to signup first!'})
+        
         if u.password == hashlib.sha256(password+salt.Salt.salt()).hexdigest():
             
             response =  HttpResponseRedirect('/')
             response.set_signed_cookie('_h_session', 'test')
             return response
         else:
-            # XXX: return error message saying password validation failed
-            return render(request, 'login.html', {})
+            return render(request, 'login.html', {'error': 'Invalid password for this email!',
+                                                  'email': email})
     else:
         # unsupported raise 404 ?!
         pass
         
 def signup(request):
     if request.method == 'GET':
-        form = SignUpForm()
+        form = SignUpForm(auto_id='%s')
         return render(request, 'signup.html', {'form': form})
     elif request.method == 'POST':
         logging.info('signup data posted')

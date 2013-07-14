@@ -1,20 +1,36 @@
 {% extends "index_base.html" %}
 
 {% block left_area %}
-<div id="room_feed">
-          <p>Hello world!!</p>
-        </div>
-        <input type="textarea" style="width: 200px; height: 100px;"
-                                                           id="usersays"/><input type="submit"
-                                                           onsubmit="return
-                                                                     false;"
-                                                           onclick="userSays()"
-                                                           value="Say"
-                                                           href="#"/><input type="submit"
-                                                                            onclick="userAsks()"
-                                                                            value="Ask"
-                                                                            onsubmit="return
-                                                           false;"
-                                                                            href="#"/>
-
+<div id="chatroom">
+  <div id="room_feed">
+  </div>
+  <table border="0px">
+    <tr>
+      <td><textarea id="chatinput"></textarea></td>
+      <td>
+        <input class="hButton" type="submit"
+               onsubmit="return false;"
+               onclick="dummyChat()"
+               value="Say"
+               href="#"
+               style="width: 100px;
+                      height: 40px;"
+               />
+      </td>
+      <td>
+        <input class="hButton" type="submit"
+               onsubmit="return false;"
+               onclick="dummyChat()"
+               value="Ask"
+               href="#"
+               style="width: 100px;
+                      height: 40px;"
+               />
+      </td>            
+    </tr>
+  </table>
+</div>
+<div id="taskstodo" style="display: none;">
+  <h3> Under construction! come back later </h3>
+</div>
 {% endblock %}

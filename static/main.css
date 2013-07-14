@@ -1,7 +1,7 @@
 body
 {
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 15px;
+    font-family: Verdana, Geneva, sans-serif;
+    font-size: 14px;
     color: #020252;
     background: url("background.png") repeat scroll transparent;
 }
@@ -16,28 +16,52 @@ p,a,h1,h2,h3,h4,h5,h6
     width: 800px;
     margin: auto;
     position: relative;
-    min-height: 800px;
+    min-height: 600px;
 }
 #header { height: 50px; }
 #left_header { display: inline; float: left; }
 #right_header { display: inline; float: right; }
 #detail { position: absolute; }
 #main_menu { position: relative; height: 20px; border-radius: 5px 5px 0 0; background-color: #D0D0DD; }
-#left_area { position: relative; float: left; }
+#left_area { position: relative; float: left; width: 600px; }
 #right_area
 {
     position: relative; width: 200px; float: right; border: gray solid;
     border-radius: 3px;
     border-width: 2px;
 }
-#room_feed { width: 500px; background: white; width: 600px; height: 400px; overflow: auto; }
+#room_feed { width: 500px; background: white; width: 600px; height: 300px; overflow: auto; }
 .heading { text-align: center; }
 #footer { bottom: 0px; position: absolute; text-align: center; width: 100%; }
-.main_menu_selected { background-color: #A599FF; border-radius: 5px 5px 0 0; height: 20px; padding: 0 0 2px 0; }
-.main_menu_item { padding: 0 5px; }
 #login_form { position: absolute; left: 20%; }
 #logout_link
 {
     border: none;
-    backgroud: none; text-decoration: underline; cursor: pointer;
+    background: none; text-decoration: underline; cursor: pointer;
+}
+#chatinput
+{
+    font: inherit;
+    width: 300px;
+    overflow: hidden;
+    resize: none;
+    display: inline;
+    height: 40px;
+}
+.main_menu_selected { background-color: #A599FF; border-radius: 5px 5px 0 0; height: 25px; padding: 0 5px 3px 5px; }
+.main_menu_item { padding: 0 5px 3px 5px; }
+.amessage
+{
+    font-size: 12px;
+    margin: 2px;
+    background-color: #E9EAEB;
+}
+.hButton
+{
+    border: none;
+    background: #A599FF;
+    text-align: center;
+    border-radius: 2px;
+    font-size: 12px;
+    font-weight: bold;
 }

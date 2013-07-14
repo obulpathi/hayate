@@ -5,5 +5,5 @@ class Salt(object):
     """
 
     @classmethod
-    def salt(self):
+    def salt(cls):
         return "26238b0f340c9"
