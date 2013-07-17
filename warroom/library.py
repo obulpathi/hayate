@@ -21,3 +21,4 @@ def randomString(length):
     x = ''
     for _ in range(length+1):
         x = x + str(random.randint(0, 9))
+    return x
