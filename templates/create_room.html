@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block detail %}
+<div id="create_room">
+  <form method="post" id="create_room_form" action="/rooms/create"
+        style="font: inherit;">
+    {% csrf_token %}
+
+    <table border="0px" onload="document.getElementId('projectid').focus();">
+      {% if error %}
+      <tr colspan="2"><span style="color:red;">{{ error }}</span></tr>
+      {% endif %}
+      <tr>
+        <td><label for="projectid">Project Code(must be unique):</label></td>
+        <td>{{form.projectid}}</td>
+        <td><span style="color: red;" id="projectid_error"></span></td>
+      </tr>
+      <tr>
+        <td><label for="description">Enter a short description here:</label> </td>
+        <td><span style="color: red;" id="description_error"></span></td>
+      </tr>
+      <tr>
+        <td colspan="2">{{form.description}}</td>
+      </tr>
+      <tr>
+        <td colspan="2"> <input type="submit" value="Create" class="hButton"
+          style="width: 70px; height: 30px; "/>
+        </td>
+      </tr>
+    </table>
+  </form>
+</div>
+{% endblock%}

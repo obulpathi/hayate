@@ -1,7 +1,7 @@
 import logging
 import hashlib
 
-from google.appengine.ext import db
+from google.appengine.ext import ndb
 
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
@@ -32,7 +32,7 @@ def post_required(func):
     return post_wrapper    
 
 # utils
-def get_session():
+def get_session(request):
     """ Takes a request object and returns the session object corresponding
     to the sessionid in hsession cookie
     """
@@ -53,8 +53,8 @@ class SignUpForm(forms.Form):
     nickname = forms.CharField(label='Your Nick Name:')
 
 class CreateRoomForm(forms.Form):
-    roomname = forms.CharField(label='Room Name:')
-    projectid = forms.CharField(label='Project Code(must be unique):')
+    projectid = forms.CharField(label='Project Code(must be unique):', max_length=4)
+    description = forms.CharField(label='Enter a short description here', widget=forms.Textarea)
     
 @login_required
 def index(request):
@@ -68,8 +68,10 @@ def index(request):
         # else redirect to the list of rooms
         u_key = s.user
         u = u_key.get()
+        r_key = s.room
+        r = r_key.get()
         return render(request, 'index.html', {'member': u.nickname,
-                                          'room': 'UADA'})
+                                          'room': r.projectid})
 
 def login(request):
     if request.method == 'GET':
@@ -91,8 +93,12 @@ def login(request):
             s.user = u.key
             s.sessionid = randomString(15)
             s.put()
-            response =  HttpResponseRedirect('/')
+            response =  HttpResponseRedirect('/rooms')
             response.set_signed_cookie('hsession', s.sessionid)
+            # calling redirect immediately causes above session not to be reflected immediately
+            # XXX: fix it
+            import time
+            time.sleep(1)
             return response
         else:
             return render(request, 'login.html', {'error': 'Invalid password for this email!',
@@ -100,6 +106,69 @@ def login(request):
     else:
         # unsupported raise 404 ?!
         pass
+
+def rooms(request):
+    # get the session id and check if it is active
+    s = get_session(request)
+    u = None
+    if s is None:
+        return render(request, 'login.html', {})
+    else:
+        u_key = s.user
+        u = u_key.get()
+
+    if request.method == 'GET':
+        rooms = u.rooms # keys
+        room_list = []
+        for r in rooms:
+            logging.info(r)
+            _r = r.get()
+            room_list.append({'id': r.id(), 'projectid': _r.projectid})
+        return render(request, 'rooms.html', {'rooms': room_list})
+    elif request.method == 'POST':
+        r_id = request.POST['room']
+        logging.info('room_id:'+ r_id)
+        r_key = ndb.Key('Room', int(r_id))
+        logging.info('r_key: ' + str(r_key))
+        s.room = r_key
+        s.put()
+        # XXX: same argument - eventually consistent?
+        # XXX: fix this
+        import time
+        time.sleep(1)
+        return HttpResponseRedirect('/')
+
+def create_room(request):
+    # get the session id and check if it is active
+    u = None
+    s = get_session(request)
+    if s is None: # first login to create a room
+        return render(request, 'login.html', {})
+    else:
+        u_key = s.user
+        u = u_key.get()
+    
+    if request.method == 'GET':
+        form = CreateRoomForm(auto_id='%s')
+        return render(request, 'create_room.html', {'form': form})
+    elif request.method == 'POST':
+        logging.info('room creation request')
+        form = CreateRoomForm(request.POST)
+        if form.is_valid():
+            r = models.Room()
+            r.projectid = form.cleaned_data.get('projectid')
+            r.description = form.cleaned_data.get('description')
+            r.admin = u.key # current user is the admin
+            r.put()
+            # also the user is eligible for this room
+            # ideally since the user is admin, he is automatically eligible
+            # XXX: clean this logic properly
+            u.rooms.append(r.key)
+            u.put()
+            response = HttpResponseRedirect('/rooms')
+            return response
+        else:
+            return render(request, 'create_room.html', {'form': form})
         
 def signup(request):
     if request.method == 'GET':

@@ -30,6 +30,7 @@ function registerEventHandlers()
     {
         email.onchange = V_email;
         email.onblur = V_email;
+        email.focus(); // start with the email entry field if we find one
     }
 
     if(password !== undefined && password !== null)

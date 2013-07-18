@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block detail %}
+<div id="rooms">
+  <h3>Rooms</h3>
+      <div style="float: right; "><button class="hButton"> <a href="/rooms/create">Create a new room!</a></button></div>
+      <div>
+        <form method="post" id="choose_room" action="/rooms">
+          {% csrf_token %}
+          {% for room in rooms %}
+          <input type="radio" name="room" value="{{room.id}}">
+          {{room.projectid}} </input>
+          {% empty %}
+          <p>No eligible rooms to display!</p>
+          {% endfor %}
+
+          {% if rooms %}
+          <br />
+          <input type="submit" class="hButton" style="width: 150px;
+          height: 40px; " value="Click to Enter" />
+          {% endif %}
+        </form>
+      </div>
+</div>
+{% endblock %}

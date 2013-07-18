@@ -1,8 +1,8 @@
 from google.appengine.ext import ndb
 
 class Room(ndb.Model):
-    roomname = ndb.StringProperty()
     projectid = ndb.StringProperty() # unique
+    description = ndb.TextProperty()
 
 class User(ndb.Model):
     username = ndb.StringProperty()
