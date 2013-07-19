@@ -124,7 +124,8 @@ def rooms(request):
             logging.info(r)
             _r = r.get()
             room_list.append({'id': r.id(), 'projectid': _r.projectid})
-        return render(request, 'rooms.html', {'rooms': room_list})
+        return render(request, 'rooms.html', {'member': u.nickname,
+                                              'rooms': room_list})
     elif request.method == 'POST':
         r_id = request.POST['room']
         logging.info('room_id:'+ r_id)
@@ -150,7 +151,8 @@ def create_room(request):
     
     if request.method == 'GET':
         form = CreateRoomForm(auto_id='%s')
-        return render(request, 'create_room.html', {'form': form})
+        return render(request, 'create_room.html', {'member': u.nickname,
+                                                    'form': form})
     elif request.method == 'POST':
         logging.info('room creation request')
         form = CreateRoomForm(request.POST)
