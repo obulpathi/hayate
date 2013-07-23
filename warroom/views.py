@@ -9,7 +9,8 @@ from django import forms
 
 from warroom import models
 from warroom import salt
-from warroom.library import HttpTextResponse, EmailInput, randomString
+from warroom.library import HttpTextResponse, EmailInput
+from warroom.library import globalKey, randomString
 
 # --------- decorators --------
 # factored out from rietveld/codereview/views.py - http://codereview.appspot.com for more
@@ -40,7 +41,8 @@ def get_session(request):
     if sid is None:
         return None
     else:
-        s_qry = models.HSession.query(models.HSession.sessionid == sid)
+        s_qry = models.HSession.query(ancestor=globalKey())
+        s_qry.filter(models.HSession.sessionid == sid)
         s = s_qry.get()
     return s
     
@@ -80,7 +82,8 @@ def login(request):
         email = request.POST.get('email')
         password = request.POST.get('password')
         # query the DB for password and compare
-        q = models.User.query(models.User.email == email )
+        q = models.User.query(ancestor=globalKey())
+        q.filter(models.User.email == email)
         u = q.get()
 
         if u is None:
@@ -89,16 +92,12 @@ def login(request):
         if u.password == hashlib.sha256(password+salt.Salt.salt()).hexdigest():
             # valid user
             # create a session
-            s = models.HSession()
+            s = models.HSession(parent=globalKey()) # dummy key which acts as parent for all entities in Hayate
             s.user = u.key
             s.sessionid = randomString(15)
             s.put()
             response =  HttpResponseRedirect('/rooms')
             response.set_signed_cookie('hsession', s.sessionid)
-            # calling redirect immediately causes above session not to be reflected immediately
-            # XXX: fix it
-            import time
-            time.sleep(1)
             return response
         else:
             return render(request, 'login.html', {'error': 'Invalid password for this email!',
@@ -118,25 +117,20 @@ def rooms(request):
         u = u_key.get()
 
     if request.method == 'GET':
-        rooms = u.rooms # keys
+        rooms = models.Room.get_eligible_rooms(u.key)
         room_list = []
-        for r in rooms:
-            logging.info(r)
-            _r = r.get()
-            room_list.append({'id': r.id(), 'projectid': _r.projectid})
+        if rooms is not None:
+            for r in rooms:
+                room_list.append({'id': r.key.id(), 'projectid': r.projectid})
         return render(request, 'rooms.html', {'member': u.nickname,
                                               'rooms': room_list})
     elif request.method == 'POST':
         r_id = request.POST['room']
         logging.info('room_id:'+ r_id)
-        r_key = ndb.Key('Room', int(r_id))
+        r_key = ndb.Key('Room', int(r_id), parent=globalKey())
         logging.info('r_key: ' + str(r_key))
         s.room = r_key
         s.put()
-        # XXX: same argument - eventually consistent?
-        # XXX: fix this
-        import time
-        time.sleep(1)
         return HttpResponseRedirect('/')
 
 def create_room(request):
@@ -157,16 +151,11 @@ def create_room(request):
         logging.info('room creation request')
         form = CreateRoomForm(request.POST)
         if form.is_valid():
-            r = models.Room()
-            r.projectid = form.cleaned_data.get('projectid')
+            r = models.Room(parent=globalKey())
+            r.projectid = form.cleaned_data.get('projectid').upper()
             r.description = form.cleaned_data.get('description')
             r.admin = u.key # current user is the admin
             r.put()
-            # also the user is eligible for this room
-            # ideally since the user is admin, he is automatically eligible
-            # XXX: clean this logic properly
-            u.rooms.append(r.key)
-            u.put()
             response = HttpResponseRedirect('/rooms')
             return response
         else:
@@ -180,7 +169,7 @@ def signup(request):
         logging.info('signup data posted')
         form = SignUpForm(request.POST)
         if form.is_valid():
-            u = models.User()
+            u = models.User(parent=globalKey())
             u.username = form.cleaned_data.get('username')
             u.email = form.cleaned_data.get('email')
             password = form.cleaned_data.get('password')

@@ -5,12 +5,12 @@
         style="font: inherit;">
     {% csrf_token %}
 
-    <table border="0px" onload="document.getElementId('projectid').focus();">
+    <table border="0px" onload="document.getElementById('projectid').focus();">
       {% if error %}
       <tr colspan="2"><span style="color:red;">{{ error }}</span></tr>
       {% endif %}
       <tr>
-        <td><label for="projectid">Project Code(must be unique):</label></td>
+        <td><label for="projectid">Project Code(unique 4 letters):</label></td>
         <td>{{form.projectid}}</td>
         <td><span style="color: red;" id="projectid_error"></span></td>
       </tr>
@@ -19,11 +19,13 @@
         <td><span style="color: red;" id="description_error"></span></td>
       </tr>
       <tr>
-        <td colspan="2">{{form.description}}</td>
+        <td colspan="2"><textarea id="description" name="description" rows="4" cols="50" style="font: inherit; "></textarea></td>
       </tr>
       <tr>
         <td colspan="2"> <input type="submit" value="Create" class="hButton"
-          style="width: 70px; height: 30px; "/>
+          style="width: 70px; height: 30px; "/> or <a href="/rooms"
+          style="text-decoration: underline;">
+          go back </a> to the list of eligible rooms.
         </td>
       </tr>
     </table>

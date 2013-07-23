@@ -1,6 +1,8 @@
 # Helpers and other utils
 import random
 
+from google.appengine.ext import ndb
+
 from django.http import HttpResponse
 from django.forms.widgets import Input
 
@@ -22,3 +24,9 @@ def randomString(length):
     for _ in range(length+1):
         x = x + str(random.randint(0, 9))
     return x
+
+def globalKey():
+    """ returns the key to be used to organize all dangling entities into a single
+    entity group for strong consistency
+    """
+    return ndb.Key('Hayate', '1111')

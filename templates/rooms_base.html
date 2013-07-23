@@ -8,7 +8,7 @@
           {% csrf_token %}
           {% for room in rooms %}
           <input type="radio" name="room" value="{{room.id}}">
-          {{room.projectid}} </input>
+          {{room.projectid}} </input><br/>
           {% empty %}
           <p>No eligible rooms to display!</p>
           {% endfor %}

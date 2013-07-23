@@ -1,18 +1,25 @@
 from google.appengine.ext import ndb
 
-class Room(ndb.Model):
-    projectid = ndb.StringProperty() # unique
-    description = ndb.TextProperty()
+from warroom.library import globalKey
 
 class User(ndb.Model):
     username = ndb.StringProperty()
     password = ndb.StringProperty()
     email = ndb.StringProperty()
     nickname = ndb.StringProperty()
-    rooms = ndb.KeyProperty(kind=Room, repeated=True)
+    
+class Room(ndb.Model):
+    projectid = ndb.StringProperty() # unique
+    description = ndb.TextProperty()
+    users = ndb.KeyProperty(kind=User, repeated=True)
+    admin = ndb.KeyProperty(kind=User)
 
-# User was not available for Room declaration above
-Room.admin = ndb.KeyProperty(kind=User)
+    @classmethod
+    def get_eligible_rooms(cls, user_key):
+        q = cls.query(ancestor=globalKey())
+        q.filter(Room.users == user_key)
+        q.filter(Room.admin == user_key)
+        return q.iter() # returning an iterable
     
 class Task(ndb.Model):
     pass
