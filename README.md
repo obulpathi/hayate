@@ -1,6 +1,4 @@
 hayate
 ======
 
-My Test Project
-
-This is to learn github and some web programming. Will be updated later.
+Hayate is intended to simulate a warroom in virtual space. More to come later.
