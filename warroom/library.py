@@ -6,10 +6,9 @@ from google.appengine.ext import ndb
 from django.http import HttpResponse
 from django.forms.widgets import Input
 
-class HttpTextResponse:
-
-    def __init__(self, text, status):
-        return HttpResponse(text, status = status, content_type = "text/plain")
+class HttpTextResponse(HttpResponse):
+  def __init__(self, text, status):
+    super(HttpTextResponse, self).__init__(text, 'text/plain', status)
 
 class EmailInput(Input):
     input_type = 'email'

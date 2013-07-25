@@ -7,6 +7,10 @@ class User(ndb.Model):
     password = ndb.StringProperty()
     email = ndb.StringProperty()
     nickname = ndb.StringProperty()
+
+    @classmethod
+    def exists(cls, email):
+        return cls.query(cls.email == email).get() is not None
     
 class Room(ndb.Model):
     projectid = ndb.StringProperty() # unique
@@ -37,4 +41,9 @@ class HSession(ndb.Model):
     user = ndb.KeyProperty(kind=User)
     room = ndb.KeyProperty(kind=Room)
     sessionid = ndb.StringProperty()
+
+    def is_admin(self):
+        """ checks if the current user is the admin of the room
+        """
+        return self.room.get().admin == self.user 
     

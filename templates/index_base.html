@@ -6,9 +6,13 @@
 <div id="detail">
   <div id="heading">
     {% if room %}
-    <h3>{{room}}</h3>
+    <h3>You are in {{room}}</h3>
+    {% endif %}
+    {% if admin %}
+    <a style="text-decoration: underline;cursor: pointer;" onclick="addMember(this)">Add a member<a>
     {% endif %}
   </div>
+  <br/>
       <div id="main_menu">
         <span>
           <h4 class="main_menu_item main_menu_selected"

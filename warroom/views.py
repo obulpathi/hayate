@@ -13,7 +13,7 @@ from warroom.library import HttpTextResponse, EmailInput
 from warroom.library import globalKey, randomString
 
 # --------- decorators --------
-# factored out from rietveld/codereview/views.py - http://codereview.appspot.com for more
+# borrowed from rietveld/codereview/views.py - http://codereview.appspot.com for more
 
 # XXX - this is very fragile - replace with decent logic
 def login_required(func):
@@ -41,8 +41,9 @@ def get_session(request):
     if sid is None:
         return None
     else:
+        # note: looks like query objects are non-mutable
         s_qry = models.HSession.query(ancestor=globalKey())
-        s_qry.filter(models.HSession.sessionid == sid)
+        s_qry = s_qry.filter(models.HSession.sessionid == sid)
         s = s_qry.get()
     return s
     
@@ -73,8 +74,10 @@ def index(request):
         r_key = s.room
         r = r_key.get()
         return render(request, 'index.html', {'member': u.nickname,
-                                          'room': r.projectid})
-
+                                          'room': r.projectid,
+                                          'admin': s.is_admin()
+                                          })
+    
 def login(request):
     if request.method == 'GET':
         return render(request, 'login.html', {})
@@ -83,12 +86,12 @@ def login(request):
         password = request.POST.get('password')
         # query the DB for password and compare
         q = models.User.query(ancestor=globalKey())
-        q.filter(models.User.email == email)
+        q = q.filter(models.User.email == email)
         u = q.get()
 
         if u is None:
             return render(request, 'login.html', {'error': 'Invalid email! You might want to signup first!'})
-        
+
         if u.password == hashlib.sha256(password+salt.Salt.salt()).hexdigest():
             # valid user
             # create a session
@@ -151,8 +154,16 @@ def create_room(request):
         logging.info('room creation request')
         form = CreateRoomForm(request.POST)
         if form.is_valid():
+            projectid = form.cleaned_data.get('projectid').upper()
+
+            # make sure that the user doesn't create a duplicate room
+            p = models.Room.query(models.Room.projectid == projectid).get()
+            if p is not None: # project code is already used
+                return render(request, 'create_room.html', {'form': form,
+                                                            'error': 'Project code already in use!'})
+    
             r = models.Room(parent=globalKey())
-            r.projectid = form.cleaned_data.get('projectid').upper()
+            r.projectid = projectid
             r.description = form.cleaned_data.get('description')
             r.admin = u.key # current user is the admin
             r.put()
@@ -198,3 +209,28 @@ def logout(request):
     response = render(request, 'login.html', {})
     response.delete_cookie('hsession')
     return response
+
+@post_required
+def add_member(request):
+    s = get_session(request)
+    # XXX: assuming active session always, at this point
+    email = request.POST.get('email')
+
+    # check if the user has an account already in Hayate
+    # if yes, just add him
+    # else, send an invite TODO
+    u = s.user.get()
+    if u.email == email:
+        return HttpTextResponse('You are already in the room!', 200)
+    elif models.User.exists(email):
+        q = models.User.query(ancestor=globalKey())
+        q = q.filter(models.User.email == email)
+        nu = q.get()
+        r = s.room.get()
+        r.users.append(nu.key)
+        r.put()
+        return HttpTextResponse('Successfully added!', 200)
+    else:
+        # TODO: add the logic to send an invite email to passed in email
+        # and inform the same to user i.e. Invite sent!
+        return HttpTextResponse('User not present in Hayate!', 200)

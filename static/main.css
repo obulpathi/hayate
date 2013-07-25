@@ -31,7 +31,6 @@ p,a,h1,h2,h3,h4,h5,h6
     border-width: 2px;
 }
 #room_feed { width: 500px; background: white; width: 600px; height: 300px; overflow: auto; }
-.heading { text-align: center; }
 #footer { bottom: 0px; position: absolute; text-align: center; width: 100%; }
 #login_form { position: absolute; left: 20%; }
 #logout_link
@@ -48,6 +47,10 @@ p,a,h1,h2,h3,h4,h5,h6
     display: inline;
     height: 40px;
 }
+#fly_out_container
+{
+}
+.heading { text-align: center; }
 .main_menu_selected { background-color: #A599FF; border-radius: 5px 5px 0 0; height: 25px; padding: 0 5px 3px 5px; }
 .main_menu_item { padding: 0 5px 3px 5px; }
 .amessage

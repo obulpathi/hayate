@@ -2,10 +2,6 @@
  * main.js
  * Copyright Balamurugan V R 2013
  * 
- * Guidelines:
- * register event handlers handles adding the handlers for required DOM node
- * all the validation functions start with V_ eg: V_email
- * 
  */
 
 // root namespace for the project
@@ -162,4 +158,90 @@ function gotoTasksView()
     taskslink.classList.add('main_menu_selected');
     var roomlink = document.getElementById('room_link');
     roomlink.classList.remove('main_menu_selected');
+}
+
+function getXMLHttpRequest()
+{
+    return new XMLHttpRequest();
+}
+
+function killMyParent(element)
+{
+    var parent = element.parentNode;
+    parent.remove();
+}
+
+function killMe(element)
+{
+    element.remove();
+}
+
+function getChildWithName(element, name)
+{
+    for(var i = 0; i < element.children.length; i++)
+    {
+        if(element.children[i].name === name)
+            return element.children[i];
+    }
+    return null;
+}
+
+function addMember_(element)
+{
+    var httpreq = getXMLHttpRequest();
+    if(!httpreq)
+    {
+        return;
+    }
+
+    var email = getChildWithName(element, 'email');
+
+    // remove the error 
+    var add_error = document.getElementById('add_member_error');
+    if(add_error)
+        add_error.remove();
+    
+    httpreq.open("POST", "/rooms/add_member");
+    var cookie = document.cookie;
+    // django CSRF
+    httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));
+    httpreq.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+    httpreq.onreadystatechange = function()
+    {
+        if(httpreq.readyState === 4)
+        {
+            var spanElement = document.createElement('span');
+            spanElement.id = 'add_member_error';
+            spanElement.innerHTML = httpreq.responseText;
+            element.appendChild(spanElement);
+        }
+    };
+    
+    httpreq.send("email="+email.value);
+}
+
+/**
+ * sets up the DOM elements and events to read the user input and add the desired
+ * member to room
+ * @param element - container to host the above. typically 'heading'
+ */
+function addMember(element)
+{
+    var parent = element.parentNode;
+    var divElement = document.createElement("div");
+    divElement.id = "fly_out_container";
+    var formElement = document.createElement("form");
+    formElement.id = "add_member_form";
+    formElement.action = "javascript:addMember_(this)";
+    //formElement.method = "post";
+    formElement.style.display = "inline";
+    formElement.onsubmit = addMember_;
+    divElement.innerHTML = "<input type=\"email\" name=\"email\" />" +
+        "<button class=\"hButton\" " +
+        "onclick=\"addMember_(this.parentNode)\">Add</button>";
+    //divElement.appendChild(formElement);
+    divElement.innerHTML = divElement.innerHTML +
+        "<button class=\"hButton\" onclick=\"killMyParent(this)\">Close</button>";
+    parent.appendChild(divElement);
 }

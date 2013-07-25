@@ -6,6 +6,7 @@ urlpatterns = patterns(
     url(r'signup', 'signup'),
     url(r'logout', 'logout'),
     url(r'rooms/create', 'create_room'),
-    url('rooms', 'rooms'),
+    url(r'rooms/add_member', 'add_member'),
+    url(r'rooms', 'rooms'),
     url(r'^$', 'index'),
     )
