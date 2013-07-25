@@ -182,7 +182,7 @@ def signup(request):
         if form.is_valid():
 
             # check if user exists already
-            if models.User.get_by_id(email, parent=globalKey()) is not None:
+            if models.User.get_by_id(form.cleaned_data.get('email'), parent=globalKey()) is not None:
                 return render(request, 'signup.html', {'form': form,
                                                        'error': 'Email already exists!'
                                                        })
