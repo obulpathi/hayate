@@ -85,9 +85,10 @@ def login(request):
         email = request.POST.get('email')
         password = request.POST.get('password')
         # query the DB for password and compare
-        q = models.User.query(ancestor=globalKey())
-        q = q.filter(models.User.email == email)
-        u = q.get()
+        # q = models.User.query(ancestor=globalKey())
+        # q = q.filter(models.User.email == email)
+        # u = q.get()
+        u = models.User.get_by_id(email, parent=globalKey())
 
         if u is None:
             return render(request, 'login.html', {'error': 'Invalid email! You might want to signup first!'})
@@ -177,10 +178,16 @@ def signup(request):
         form = SignUpForm(auto_id='%s')
         return render(request, 'signup.html', {'form': form})
     elif request.method == 'POST':
-        logging.info('signup data posted')
         form = SignUpForm(request.POST)
         if form.is_valid():
-            u = models.User(parent=globalKey())
+
+            # check if user exists already
+            if models.User.get_by_id(email, parent=globalKey()) is not None:
+                return render(request, 'signup.html', {'form': form,
+                                                       'error': 'Email already exists!'
+                                                       })
+            
+            u = models.User(parent=globalKey(), id=form.cleaned_data.get('email')) # email is the unique id
             u.username = form.cleaned_data.get('username')
             u.email = form.cleaned_data.get('email')
             password = form.cleaned_data.get('password')
@@ -222,15 +229,14 @@ def add_member(request):
     u = s.user.get()
     if u.email == email:
         return HttpTextResponse('You are already in the room!', 200)
-    elif models.User.exists(email):
-        q = models.User.query(ancestor=globalKey())
-        q = q.filter(models.User.email == email)
-        nu = q.get()
-        r = s.room.get()
-        r.users.append(nu.key)
-        r.put()
-        return HttpTextResponse('Successfully added!', 200)
     else:
-        # TODO: add the logic to send an invite email to passed in email
-        # and inform the same to user i.e. Invite sent!
-        return HttpTextResponse('User not present in Hayate!', 200)
+        u = models.User.get_by_id(email, parent=globalKey())
+        if u:
+            r = s.room.get()
+            r.users.append(u.key)
+            r.put()
+            return HttpTextResponse('Successfully added!', 200)
+        else:
+            # TODO: add the logic to send an invite email to passed in email
+            # and inform the same to user i.e. Invite sent!
+            return HttpTextResponse('User not present in Hayate!', 200)

@@ -1,3 +1,5 @@
+import logging
+
 from google.appengine.ext import ndb
 
 from warroom.library import globalKey
@@ -7,10 +9,6 @@ class User(ndb.Model):
     password = ndb.StringProperty()
     email = ndb.StringProperty()
     nickname = ndb.StringProperty()
-
-    @classmethod
-    def exists(cls, email):
-        return cls.query(cls.email == email).get() is not None
     
 class Room(ndb.Model):
     projectid = ndb.StringProperty() # unique
@@ -20,9 +18,7 @@ class Room(ndb.Model):
 
     @classmethod
     def get_eligible_rooms(cls, user_key):
-        q = cls.query(ancestor=globalKey())
-        q.filter(Room.users == user_key)
-        q.filter(Room.admin == user_key)
+        q = cls.query(ndb.OR(cls.admin == user_key, cls.users == user_key), ancestor=globalKey())
         return q.iter() # returning an iterable
     
 class Task(ndb.Model):

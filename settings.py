@@ -2,7 +2,7 @@
 
 import os
 
-DEBUG = True
+DEBUG = os.environ['SERVER_SOFTWARE'].startswith('Dev')
 TEMPLATE_DEBUG = DEBUG
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
