@@ -16,6 +16,7 @@ sys.path = ['C:\\tries\\hayate',
 os.chdir('C:\\tries\\hayate')
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 os.environ['APPLICATION_ID'] = 'hayate'
+os.environ['SERVER_SOFTWARE'] = 'Development'
 
 # setup database
 datastore_file = '/dev/null'

@@ -17,19 +17,28 @@ class Room(ndb.Model):
     admin = ndb.KeyProperty(kind=User)
 
     @classmethod
-    def get_eligible_rooms(cls, user_key):
+    def get_eligible_rooms_for_user(cls, user_key):
         q = cls.query(ndb.OR(cls.admin == user_key, cls.users == user_key), ancestor=globalKey())
         return q.iter() # returning an iterable
+
+    def is_user_present(self, user_key):
+        return user_key in self.users
     
 class Task(ndb.Model):
     pass
 
 # a message
+# descendent of Room
 class Message(ndb.Model):
     timestamp = ndb.DateTimeProperty(auto_now_add=True)
-    room = ndb.KeyProperty(kind=Room)
     message = ndb.StringProperty()
     user = ndb.KeyProperty(kind=User)
+
+    @classmethod
+    def get_recent(cls, n):
+        """ returns recent n messages 
+        """
+        pass
 
 # models a hayate session
 class HSession(ndb.Model):

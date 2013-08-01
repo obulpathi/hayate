@@ -1,16 +1,27 @@
 {% extends "index_base.html" %}
 
+{% block right_area %}
+<div id="right_area">
+  <h5>Members online</h5>
+</div>
+<br/>
+<br/>
+<div id="right_area">
+  <h5>Others</h5>
+</div>
+{% endblock %}
+
 {% block left_area %}
 <div id="chatroom">
   <div id="room_feed">
   </div>
+  <form action="javascript:HAYATE.app.chat.sendMessage(this);">
   <table border="0px">
     <tr>
-      <td><textarea id="chatinput"></textarea></td>
+      <td><input type="text" id="chatinput" autofocus="autofocus"></input></td>
       <td>
         <input class="hButton" type="submit"
-               onsubmit="return false;"
-               onclick="dummyChat()"
+               onclick="HAYATE.app.chat.saySomething()"
                value="Say"
                href="#"
                style="width: 100px;
@@ -18,9 +29,8 @@
                />
       </td>
       <td>
-        <input class="hButton" type="submit"
-               onsubmit="return false;"
-               onclick="dummyChat()"
+        <input class="hButton" type="button"
+               onclick="HAYATE.app.chat.askSomething()"
                value="Ask"
                href="#"
                style="width: 100px;
@@ -29,6 +39,7 @@
       </td>            
     </tr>
   </table>
+  </form>
 </div>
 <div id="taskstodo" style="display: none;">
   <h3> Under construction! come back later </h3>

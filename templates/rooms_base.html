@@ -2,7 +2,8 @@
 {% block detail %}
 <div id="rooms">
   <h3>Rooms</h3>
-      <div style="float: right; "><button class="hButton"> <a href="/rooms/create">Create a new room!</a></button></div>
+      <div style="float: right; "><a class="hButton"
+      href="/rooms/create">Create a new room</a></div>
       <div>
         <form method="post" id="choose_room" action="/rooms">
           {% csrf_token %}

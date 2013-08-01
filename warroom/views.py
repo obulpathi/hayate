@@ -1,7 +1,10 @@
 import logging
 import hashlib
+import json
+import time
 
 from google.appengine.ext import ndb
+from google.appengine.api import channel
 
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
@@ -13,12 +16,12 @@ from warroom.library import HttpTextResponse, EmailInput
 from warroom.library import globalKey, randomString
 
 # --------- decorators --------
-# borrowed from rietveld/codereview/views.py - http://codereview.appspot.com for more
+# some borrowed from rietveld/codereview/views.py - http://codereview.appspot.com for more
 
-# XXX - this is very fragile - replace with decent logic
 def login_required(func):
     def login_wrapper(request, *args, **kwds):
-        if request.get_signed_cookie('hsession', None) is None:
+        s = get_session(request)
+        if s is None:
             return render(request, 'login.html', {})
         else:
             return func(request, *args, **kwds)
@@ -73,9 +76,13 @@ def index(request):
         u = u_key.get()
         r_key = s.room
         r = r_key.get()
+
+        # create a channel based using sessionid as the key
+        token = channel.create_channel(s.sessionid)
         return render(request, 'index.html', {'member': u.nickname,
                                           'room': r.projectid,
-                                          'admin': s.is_admin()
+                                          'admin': s.is_admin(),
+                                          'token': token
                                           })
     
 def login(request):
@@ -110,6 +117,7 @@ def login(request):
         # unsupported raise 404 ?!
         pass
 
+@login_required    
 def rooms(request):
     # get the session id and check if it is active
     s = get_session(request)
@@ -121,7 +129,7 @@ def rooms(request):
         u = u_key.get()
 
     if request.method == 'GET':
-        rooms = models.Room.get_eligible_rooms(u.key)
+        rooms = models.Room.get_eligible_rooms_for_user(u.key)
         room_list = []
         if rooms is not None:
             for r in rooms:
@@ -130,13 +138,12 @@ def rooms(request):
                                               'rooms': room_list})
     elif request.method == 'POST':
         r_id = request.POST['room']
-        logging.info('room_id:'+ r_id)
         r_key = ndb.Key('Room', int(r_id), parent=globalKey())
-        logging.info('r_key: ' + str(r_key))
         s.room = r_key
         s.put()
         return HttpResponseRedirect('/')
-
+    
+@login_required
 def create_room(request):
     # get the session id and check if it is active
     u = None
@@ -200,7 +207,8 @@ def signup(request):
     else:
         # unsupported raise 404 ?!
         pass
-    
+
+@login_required    
 @post_required
 def logout(request):
     logging.info('logout initialized')
@@ -217,6 +225,7 @@ def logout(request):
     response.delete_cookie('hsession')
     return response
 
+@login_required    
 @post_required
 def add_member(request):
     s = get_session(request)
@@ -233,10 +242,49 @@ def add_member(request):
         u = models.User.get_by_id(email, parent=globalKey())
         if u:
             r = s.room.get()
-            r.users.append(u.key)
-            r.put()
-            return HttpTextResponse('Successfully added!', 200)
+            if r.is_user_present(u.key):
+                return HttpTextResponse('User already present in room!', 200)
+            else:
+                r.users.append(u.key)
+                r.put()
+                return HttpTextResponse('Successfully added!', 200)
         else:
             # TODO: add the logic to send an invite email to passed in email
             # and inform the same to user i.e. Invite sent!
             return HttpTextResponse('User not present in Hayate!', 200)
+
+@login_required
+def messages(request):
+    if request.method == 'GET':
+        # XXX - test stub - replace with actual implementation
+        msg = eval("""[
+        {
+            'user': 'Puru',
+            'timestamp': time.time(),
+            'message': 'Sky'            
+        },
+        {
+            'user': 'Hari',
+            'timestamp': time.time(),
+            'message': 'Nothin much!'            
+        }
+    ]""")
+
+        return HttpTextResponse(json.dumps(msg), 200)
+
+@login_required
+@post_required
+def add_message(request):
+    # add message to DB
+    message = request.POST['message']
+    s = get_session(request)
+    r = s.room.get()
+    m = models.Message(parent=r.key)
+    m.user = s.user
+    m.message = message
+    m.put()
+
+    # update the channels
+    
+
+    

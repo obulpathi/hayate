@@ -14,7 +14,6 @@
       <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro:400,500,600'
             rel='stylesheet' type='text/css'>
 
-      <!-- place holder for adding static content -->
       {% block headstatic %}
       {% endblock %}
       
@@ -43,5 +42,9 @@
   </div> <!-- body_contents -->
 
     <script type="text/javascript" src="/static/main.js"></script>
+
+    {% block bodystatic %}
+    {% endblock %}
+
 </body>
 </html>

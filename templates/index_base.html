@@ -1,15 +1,24 @@
 {% extends "base.html" %}
-{% block headstatic %}
+{% block bodystatic %}
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
+<script>
+  channel = new goog.appengine.Channel('{{token}}');
+  socket = channel.open();
+  socket.onopen = HAYATE.app.chat.onOpened;
+  socket.onmessage = HAYATE.app.chat.onMessage;
+  socket.onerror = HAYATE.app.chat.onError;
+  socket.onclose = HAYATE.app.chat.onClose;
+</script>
 {% endblock %}
 {% block detail %}
 <div id="detail">
   <div id="heading">
     {% if room %}
-    <h3>You are in {{room}}</h3>
+    <h3>You are in room: {{room}}</h3>
+    <a style="text-decoration: underline;cursor: pointer;" href="/rooms">Go back to the list of rooms</a>
     {% endif %}
     {% if admin %}
-    <a style="text-decoration: underline;cursor: pointer;" onclick="addMember(this)">Add a member<a>
+    <a style="text-decoration: underline;cursor: pointer;" onclick="HAYATE.app.addMember(this)">Add a member</a>
     {% endif %}
   </div>
   <br/>
@@ -17,13 +26,13 @@
         <span>
           <h4 class="main_menu_item main_menu_selected"
               style="display: inline; cursor: pointer; padding-right: 0;"
-              onclick="gotoRoom()"
+              onclick="HAYATE.app.gotoRoom()"
               id="room_link">
             <a>Room</a>
           </h4>
           <h4 class="main_menu_item"
               style="display: inline; cursor: pointer; "
-              onclick="gotoTasksView()"
+              onclick="HAYATE.app.gotoTasksView()"
               id="taskstodo_link">
             <a>Tasks/Todo</a>
           </h4>
@@ -33,5 +42,7 @@
         {% block left_area %}
         {% endblock %}
       </div> <!-- left_area -->
+        {% block right_area %}
+        {% endblock %}
     </div> <!-- detail -->
 {% endblock %}
