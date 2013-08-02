@@ -171,7 +171,12 @@ HAYATE.app.addMember = function (element)
 
 // Implementation of chat related functionalities
 
-HAYATE.app.chat.onOpened = function ()
+HAYATE.app.chat.initialize = function()
+{
+    openChannel();
+};
+
+HAYATE.app.chat.onOpen = function ()
 {
     var httpreq = HAYATE.core.getXMLHttpRequest();
     if(!httpreq)
@@ -184,29 +189,23 @@ HAYATE.app.chat.onOpened = function ()
 
     httpreq.onreadystatechange = function()
     {
-        if(httpreq.readyState === 4)
-        {
-            var messages = eval(httpreq.responseText);
-            for(var i=0; i < messages.length; i++)
-            {
-                var dt = new Date(messages[i].timestamp);
-                document.getElementById('room_feed').innerHTML += '<div class="amessage"><span>' +
-                    '<h4 style="display: inline;">' + messages[i].user + '</h5>' +
-                    '</span>' + '<div style="float: right; font-size: 9px;">[' +
-                    dt.toLocaleDateString() +
-                    ' ' + dt.getHours() + ':' + dt.getMinutes() + ':' +
-                    dt.getSeconds() + ']</div>' +
-                    '<div style="padding-top: 2px;">' + messages[i].message + '</div></div>';
-            }
-        }
+        // nothing to do
     };
     
     httpreq.send();
     
 };
 
-HAYATE.app.chat.onMessage = function ()
+HAYATE.app.chat.onMessage = function (message)
 {
+    var messages = JSON.parse(message.data);
+    for(var i=0; i < messages.length; i++)
+    {
+        document.getElementById('room_feed').innerHTML += '<div class="amessage"><span>' +
+            '<h4 style="display: inline;">' + messages[i].user + '</h5>' +
+            '</span>' + '<div style="float: right; font-size: 9px;">[' + messages[i].timestamp + ']</div>' +
+            '<div style="padding-top: 2px;">' + messages[i].message + '</div></div>';
+    }
 };
 
 HAYATE.app.chat.onError = function ()
@@ -215,78 +214,97 @@ HAYATE.app.chat.onError = function ()
 
 HAYATE.app.chat.onClose = function ()
 {
+    // reload the page to get a new token
+    window.location.reload();
 };
 
-// Unformatted and non-factored temporary code for dev/testing
-function registerEventHandlers()
+HAYATE.app.chat.saySomething = function ()
 {
-    var email = document.getElementById('email');
-    var password = document.getElementById('password');
-    var password1 = document.getElementById('password1');
-
-    if(email !== undefined && email !== null)
+    var httpreq = HAYATE.core.getXMLHttpRequest();
+    if(!httpreq)
     {
-        email.onchange = V_email;
-        email.onblur = V_email;
+        return;
     }
 
-    if(password !== undefined && password !== null)
-    {
-        password.onchange = V_password;
-        password.onchange = V_password;
-    }
+    var message = document.getElementById('chatinput').value;
+    httpreq.open("POST", "/messages/add");
+    var cookie = document.cookie;
+    // django CSRF
+    httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));
+    httpreq.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
-    if(password !== undefined && password1 != null)
+    httpreq.onreadystatechange = function()
     {
-        password1.onblur = V_password1;
-        password1.onblur = V_password1;
-    }
-}
+        // nothing to do
+    };
 
-// validates node with id 'email' has a valid email address
-function V_email()
+    // clean up user input before posting
+    document.getElementById('chatinput').value = '';
+    httpreq.send("message="+message);
+};
+
+/**
+ * validates the signup data provided by user 
+ */
+HAYATE.app.validateSignupData = function ()
 {
-    var email = document.getElementById('email').value;
-    if(email == null || email == "")
+    var email = document.getElementById('email').value || null;
+    var password = document.getElementById('password').value || null;
+    var password1 = document.getElementById('password1').value || null;
+    var focusSet = false, error = false;
+
+    if(!email)
     {
-        document.getElementById('email_error').innerHTML = 'Email is required field!';
+        error = true;
+        document.getElementById('email_error').innerHTML = 'Email should not be empty!';
         document.getElementById('email').focus();
+        focusSet = true;
     }
     else
     {
-        document.getElementById('email_error').innerHTML = '';
+        // clean up previously displayed errors
+        document.getElementById('email_error').innerHTML = '';            
     }
-}
 
-// validates node with id 'password' has a valid password
-function V_password()
-{
-    var password = document.getElementById('password').value;
-    if(password == null || password == "")
+    if(!password)
     {
-        document.getElementById('password_error').innerHTML = 'Password is required field!';
-        document.getElementById('password').focus();
+        error = true;
+        document.getElementById('password_error').innerHTML = 'Password should not be empty!';
+        document.getElementById('password').innerHTML = '';
+        if(!focusSet)
+        {
+            document.getElementById('password').focus();
+        }
     }
     else
     {
         document.getElementById('password_error').innerHTML = '';
     }
-}
 
-// validates node with id 'password1' has a valid password and matched the one with id 'password'
-function V_password1()
-{
-    var password = document.getElementById('password').value;    
-    var password1 = document.getElementById('password1').value;
-    if(password1 == null || password1 == "" || password != password1)
+    if(password !== password1)
     {
+        error = true;
         document.getElementById('password1_error').innerHTML = 'Passwords should match!';
+        document.getElementById('password').innerHTML = '';        
+        document.getElementById('password1').innerHTML = '';
+        if(!focusSet)
+        {
+            document.getElementById('password').focus();
+        }        
     }
     else
     {
         document.getElementById('password1_error').innerHTML = '';
     }
-}
+
+    if(error)
+    {
+        return false;
+    }
+
+    // all is well!
+    return true;
+};
 
 function dummyChat()
 {

@@ -5,6 +5,7 @@
 
 import sys
 import unittest
+import logging
 
 # basic setup
 sys.path.insert(0, 'C:\\google_appengine') # gae sdk path
@@ -47,6 +48,10 @@ class MessageTest(HTestCase):
         self.assertTrue(m_key is not None)
         m = m_key.get()
         self.assertTrue(m is not None)
+
+        x = models.Message.get_recent(r_key, 10)
+        for y in x:
+            self.assertTrue(y is not None)
         
 
 # to be run as a standalone

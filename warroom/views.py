@@ -79,6 +79,7 @@ def index(request):
 
         # create a channel based using sessionid as the key
         token = channel.create_channel(s.sessionid)
+        logging.info('created token: ' + str(token))
         return render(request, 'index.html', {'member': u.nickname,
                                           'room': r.projectid,
                                           'admin': s.is_admin(),
@@ -256,27 +257,28 @@ def add_member(request):
 @login_required
 def messages(request):
     if request.method == 'GET':
-        # XXX - test stub - replace with actual implementation
-        msg = eval("""[
-        {
-            'user': 'Puru',
-            'timestamp': time.time(),
-            'message': 'Sky'            
-        },
-        {
-            'user': 'Hari',
-            'timestamp': time.time(),
-            'message': 'Nothin much!'            
-        }
-    ]""")
+        s = get_session(request)
+        _msgformat = "{'user': '%s', 'timestamp': '%s', 'message': '%s'}"
+        messages = []
 
-        return HttpTextResponse(json.dumps(msg), 200)
+        try:
+            for m in models.Message.get_recent(s.room, 10):
+                msg = _msgformat % (m.user.get().username,
+                                              str(m.timestamp.strftime('%Y/%m/%d %H:%M:%S')),
+                                              m.message)
+                messages.append(eval(msg))
+            channel.send_message(s.sessionid, json.dumps(messages))
+        except Exception as e:
+            logging.info(type(e))
+
+        return HttpTextResponse('', 200)
 
 @login_required
 @post_required
 def add_message(request):
     # add message to DB
     message = request.POST['message']
+
     s = get_session(request)
     r = s.room.get()
     m = models.Message(parent=r.key)
@@ -285,6 +287,21 @@ def add_message(request):
     m.put()
 
     # update the channels
-    
+    messages = []
 
+    try:
+        _msgformat = "{'user': '%s', 'timestamp': '%s', 'message': '%s'}"
+        msg = _msgformat % (m.user.get().username,
+                                              str(m.timestamp.strftime('%Y/%m/%d %H:%M:%S')),
+                                              m.message)
+        messages.append(eval(msg))
+    except Exception as e:
+        logging.info(str(e))
     
+    try:
+        for _s in models.HSession.get_all_sessions_for_room(s.room):
+            channel.send_message(_s.sessionid, json.dumps(messages))
+    except Exception as e:
+        logging.info(type(e))
+
+    return HttpTextResponse('', 200)

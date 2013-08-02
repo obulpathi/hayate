@@ -38,7 +38,9 @@ class Message(ndb.Model):
     def get_recent(cls, room_key, n):
         """ returns recent n messages in the room with room_key
         """
-        pass
+        q = cls.query(ancestor=room_key)
+        q = q.order(cls.timestamp)
+        return q.iter()
 
 # models a hayate session
 class HSession(ndb.Model):
@@ -50,5 +52,11 @@ class HSession(ndb.Model):
     def is_admin(self):
         """ checks if the current user is the admin of the room
         """
-        return self.room.get().admin == self.user 
-    
+        return self.room.get().admin == self.user
+
+    @classmethod
+    def get_all_sessions_for_room(cls, room_key):
+        """ returns all the sessions in the room
+        """
+        q = cls.query(cls.room == room_key)
+        return q.iter()

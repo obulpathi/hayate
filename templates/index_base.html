@@ -1,13 +1,24 @@
 {% extends "base.html" %}
-{% block bodystatic %}
+{% block headstatic %}
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
+{% endblock %}
+{% block bodystaticfoot %}
 <script>
-  channel = new goog.appengine.Channel('{{token}}');
-  socket = channel.open();
-  socket.onopen = HAYATE.app.chat.onOpened;
+
+  openChannel = function()
+  {
+  var token = '{{token}}';
+  var channel = new goog.appengine.Channel(token);
+  var socket = channel.open();
+  connected = true;
+  socket.onopen = HAYATE.app.chat.onOpen;
   socket.onmessage = HAYATE.app.chat.onMessage;
   socket.onerror = HAYATE.app.chat.onError;
   socket.onclose = HAYATE.app.chat.onClose;
+  }
+
+  setTimeout(HAYATE.app.chat.initialize, 100);
+  
 </script>
 {% endblock %}
 {% block detail %}
