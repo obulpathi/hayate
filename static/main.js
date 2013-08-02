@@ -48,6 +48,16 @@ HAYATE.core.getChildWithName = function (element, name)
     return null;
 };
 
+HAYATE.core.getChildWithId = function (element, id)
+{
+    for(var i = 0; i < element.children.length; i++)
+    {
+        if(element.children[i].id === id)
+            return element.children[i];
+    }
+    return null;
+};
+
 HAYATE.core.createElement = function(type, id)
 {
     var element = document.createElement(type);
@@ -121,6 +131,11 @@ HAYATE.app.addMember_ = function (element)
     {
         if(httpreq.readyState === 4)
         {
+            var a = document.getElementById('add_member_email');
+            if(a)
+            {
+                a.value = '';
+            }
             add_error = HAYATE.core.createElement('span', 'add_member_error');
             add_error.innerHTML = httpreq.responseText;
             element.appendChild(add_error);
@@ -133,15 +148,21 @@ HAYATE.app.addMember_ = function (element)
 /**
  * sets up the DOM elements and events to read the user input and add the desired
  * member to room
- * @param element - container to host the above. typically 'heading'
+ * @param element - link which triggers this to host the above. typically 'a'
  */
 HAYATE.app.addMember = function (element)
 {
     var parent = element.parentNode;
-    var divElement = HAYATE.core.createElement('div', 'fly_out_container');
+    var a = HAYATE.core.getChildWithId(parent, 'add_member_container');
+    if(a)
+    {
+        return;
+    }
+
+    var divElement = HAYATE.core.createElement('div', 'add_member_container');
     var formElement = HAYATE.core.createElement('form', 'add_member_form');
     formElement.style.display = "inline";
-    divElement.innerHTML = "<input type=\"email\" name=\"email\" />" +
+    divElement.innerHTML = "<input type=\"email\" name=\"email\" id=\"add_member_email\"/>" +
         "<button class=\"hButton\" " +
         "onclick=\"HAYATE.app.addMember_(this.parentNode)\">Add</button>" + 
         "<button class=\"hButton\" onclick=\"HAYATE.core.killMyParent(this)\">Close</button>";

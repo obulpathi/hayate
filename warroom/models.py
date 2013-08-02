@@ -35,8 +35,8 @@ class Message(ndb.Model):
     user = ndb.KeyProperty(kind=User)
 
     @classmethod
-    def get_recent(cls, n):
-        """ returns recent n messages 
+    def get_recent(cls, room_key, n):
+        """ returns recent n messages in the room with room_key
         """
         pass
 

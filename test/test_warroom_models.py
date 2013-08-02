@@ -36,7 +36,18 @@ class SimpleTestCase(HTestCase):
 class MessageTest(HTestCase):
 
     def testMessageAdd(self):
-        m = models.Message()
+        r_key = ndb.Key('Room', '1234', parent=globalKey())
+        u_key = ndb.Key('User', '1234', parent=globalKey())
+        m = models.Message(parent=r_key)
+        message = 'Test Message'
+        m.message = message
+        m.user = u_key
+        m_key = m.put()
+
+        self.assertTrue(m_key is not None)
+        m = m_key.get()
+        self.assertTrue(m is not None)
+        
 
 # to be run as a standalone
 if __name__ == '__main__':
