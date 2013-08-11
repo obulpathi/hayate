@@ -2,7 +2,8 @@
 
 import os
 
-DEBUG = os.environ['SERVER_SOFTWARE'].startswith('Dev')
+DEBUG = os.environ.get('SERVER_SOFTWARE', 'Google App Engine').startswith('Dev')
+
 TEMPLATE_DEBUG = DEBUG
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.

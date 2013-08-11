@@ -10,6 +10,10 @@ class HttpTextResponse(HttpResponse):
   def __init__(self, text, status):
     super(HttpTextResponse, self).__init__(text, 'text/plain', status)
 
+class HttpJsonResponse(HttpResponse):
+  def __init__(self, text, status):
+    super(HttpJsonResponse, self).__init__(text, 'application/json', status)    
+    
 class EmailInput(Input):
     input_type = 'email'
 

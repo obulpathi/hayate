@@ -1,0 +1,6 @@
+ISSUES:
+=======
+
+TODO:
+=====
+Make sure paths are strict. Now /rooms/create and /rooms/create/create/create points to /rooms/create. No issues but better to 500 this out.
