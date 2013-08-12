@@ -5,18 +5,8 @@
  * trying to use module design pattern
  */
 
-if(typeof Object.prototype.beget !== 'function')
-{
-    Object.beget = function(o)
-    {
-        var F = function(){};
-        F.prototype = o;
-        return new F();
-    };
-}
-
 // root namespace for the project
-var HAYATE = HAYATE || {};
+HAYATE = {};
 
 // all the core components go here
 HAYATE.core = {};
@@ -31,37 +21,6 @@ HAYATE.app.chat = {};
 HAYATE.util = {};
 
 // Implementation of core functionalities
-
-HAYATE.core.xhrSingleton = function ()
-{
-    var xhr = undefined;
-
-    return {
-        getXhr: function ()
-        {
-            return this.xhr;
-        },
-        setXhr: function (xhr)
-        {
-            if(xhr !== undefined && xhr.constructor === XMLHttpRequest)
-            {
-                if(this.xhr === undefined || this.xhr.readyState === 4)
-                {
-                    this.xhr = xhr;
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return false;
-            }            
-        }
-    };
-}();
 
 HAYATE.core.getXMLHttpRequest = function ()
 {
@@ -104,43 +63,6 @@ HAYATE.core.createElement = function(type, id)
     var element = document.createElement(type);
     element.id = id;
     return element;
-};
-
-HAYATE.core.pollChannel = function()
-{
-    HAYATE.core.poll_();
-    setTimeout(HAYATE.core.pollChannel, 1000);
-};
-
-HAYATE.core.poll_ = function()
-{
-    var httpreq = HAYATE.core.getXMLHttpRequest();
-    if(!httpreq)
-        return;
-
-    if(!HAYATE.core.xhrSingleton.setXhr(httpreq))
-    {
-        return;
-    }
-    else
-    {
-        httpreq = HAYATE.core.xhrSingleton.getXhr();
-    }
-
-    httpreq.open("GET", "/hchannel");
-    var cookie = document.cookie;
-    // django CSRF
-    httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));
-
-    httpreq.onreadystatechange = function()
-    {
-        if(httpreq.readyState === 4 && httpreq.status === 200)
-        {
-            HAYATE.app.chat.onMessage(httpreq.responseText);
-        }
-    };
-    
-    httpreq.send();
 };
 
 // Implementation of application functionalities
@@ -251,16 +173,7 @@ HAYATE.app.addMember = function (element)
 
 HAYATE.app.chat.initialize = function()
 {
-    // var channel = new HAYATE.core.HChannel(
-    //     {
-    //         'onopen': HAYATE.app.chat.onOpen,
-    //         'onmessage': HAYATE.app.chat.onMessage
-    //     });
-    // var socket = channel.open();
-    // socket.poll();
-
-    HAYATE.app.chat.onOpen();
-    HAYATE.core.pollChannel();
+    openChannel();
 };
 
 HAYATE.app.chat.onOpen = function ()
@@ -280,23 +193,19 @@ HAYATE.app.chat.onOpen = function ()
     };
     
     httpreq.send();
+    
 };
 
 HAYATE.app.chat.onMessage = function (message)
 {
-    var messages = JSON.parse(message);
+    var messages = JSON.parse(message.data);
     for(var i=0; i < messages.length; i++)
     {
-        // XXX: add scrollIntoView to the last element added to the tree
-        // and change the logic to create a div element and add as child of room_feed
         document.getElementById('room_feed').innerHTML += '<div class="amessage"><span>' +
             '<h4 style="display: inline;">' + messages[i].user + '</h5>' +
             '</span>' + '<div style="float: right; font-size: 9px;">[' + messages[i].timestamp + ']</div>' +
             '<div style="padding-top: 2px;">' + messages[i].message + '</div></div>';
     }
-
-    // var r = document.getElementById('room_feed');
-    // r.children[r.children.length-1].scrollIntoView();
 };
 
 HAYATE.app.chat.onError = function ()
@@ -332,11 +241,6 @@ HAYATE.app.chat.saySomething = function ()
     // clean up user input before posting
     document.getElementById('chatinput').value = '';
     httpreq.send("message="+message);
-};
-
-HAYATE.app.chat.sendMessage = function()
-{
-    return true;
 };
 
 /**

@@ -4,7 +4,7 @@ import json
 import time
 
 from google.appengine.ext import ndb
-#from google.appengine.api import channel
+from google.appengine.api import channel
 
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
@@ -12,9 +12,8 @@ from django import forms
 
 from warroom import models
 from warroom import salt
-from warroom.library import HttpTextResponse, EmailInput, HttpJsonResponse
+from warroom.library import HttpTextResponse, EmailInput
 from warroom.library import globalKey, randomString
-from warroom import hchannel as channel
 
 # --------- decorators --------
 # some borrowed from rietveld/codereview/views.py - http://codereview.appspot.com for more
@@ -64,7 +63,7 @@ class CreateRoomForm(forms.Form):
     description = forms.CharField(label='Enter a short description here', widget=forms.Textarea)
     
 @login_required
-def index(request):
+def index(request): 
     # get the session id and check if it is active
     s = get_session(request)
     if s is None:
@@ -77,15 +76,15 @@ def index(request):
         u = u_key.get()
         r_key = s.room
 
-        # user dint choose a room yet
         if r_key is None:
+            # redirect to /rooms if user dint choose a room already
             return HttpResponseRedirect('/rooms')
         
         r = r_key.get()
 
         # create a channel based using sessionid as the key
-        token = channel.create_channel(s.sessionid, True)
-
+        token = channel.create_channel(s.sessionid)
+        logging.info('created token: ' + str(token))
         return render(request, 'index.html', {'member': u.nickname,
                                           'room': r.projectid,
                                           'admin': s.is_admin(),
@@ -148,8 +147,6 @@ def rooms(request):
         r_key = ndb.Key('Room', int(r_id), parent=globalKey())
         s.room = r_key
         s.put()
-        # also flush channel. essentially cleaning up the queue
-        channel.flush_channel(s.sessionid) 
         return HttpResponseRedirect('/')
     
 @login_required
@@ -168,7 +165,7 @@ def create_room(request):
         return render(request, 'create_room.html', {'member': u.nickname,
                                                     'form': form})
     elif request.method == 'POST':
-
+        logging.info('room creation request')
         form = CreateRoomForm(request.POST)
         if form.is_valid():
             projectid = form.cleaned_data.get('projectid').upper()
@@ -220,7 +217,7 @@ def signup(request):
 @login_required    
 @post_required
 def logout(request):
-
+    logging.info('logout initialized')
     request.session.flush()
 
     # delete the current session
@@ -274,9 +271,10 @@ def messages(request):
                 msg = _msgformat % (m.user.get().username,
                                               str(m.timestamp.strftime('%Y/%m/%d %H:%M:%S')),
                                               m.message)
-                channel.send_message(s.sessionid, eval(msg))
+                messages.append(eval(msg))
+            channel.send_message(s.sessionid, json.dumps(messages))
         except Exception as e:
-            logging.info(str(e))
+            logging.info(type(e))
 
         return HttpTextResponse('', 200)
 
@@ -293,48 +291,22 @@ def add_message(request):
     m.message = message
     m.put()
 
-    message = None
+    # update the channels
+    messages = []
 
     try:
         _msgformat = "{'user': '%s', 'timestamp': '%s', 'message': '%s'}"
         msg = _msgformat % (m.user.get().username,
                                               str(m.timestamp.strftime('%Y/%m/%d %H:%M:%S')),
                                               m.message)
-        message = eval(msg)
+        messages.append(eval(msg))
     except Exception as e:
         logging.info(str(e))
     
     try:
-        if message is not None:
-            for _s in models.HSession.get_all_sessions_for_room(s.room):
-                channel.send_message(_s.sessionid, message)
+        for _s in models.HSession.get_all_sessions_for_room(s.room):
+            channel.send_message(_s.sessionid, json.dumps(messages))
     except Exception as e:
-        logging.info(str(e))
+        logging.info(type(e))
 
     return HttpTextResponse('', 200)
-
-@login_required    
-def channel_handler(request):
-    """ serves /hchannel
-
-    - take the sessionid from request
-    - look for latest messages in hchannel.
-    - block for TIMEOUT seconds if None. else serve the contents in HttpTextResponse
-    """
-    s = get_session(request)
-    try:
-        retries = 60 
-        msg = ''
-        while retries > 0:
-            msg = channel.get_message(s.sessionid)
-            if msg == []:
-                import time
-                time.sleep(0.5)
-            else:
-                break
-            retries = retries-1
-    except Exception as e:
-        logging.info(str(e))
-
-    return HttpJsonResponse(json.dumps(msg), 200)
-    
