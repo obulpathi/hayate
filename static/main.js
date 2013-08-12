@@ -198,13 +198,20 @@ HAYATE.app.chat.onOpen = function ()
 
 HAYATE.app.chat.onMessage = function (message)
 {
-    var messages = JSON.parse(message.data);
-    for(var i=0; i < messages.length; i++)
+    try
     {
-        document.getElementById('room_feed').innerHTML += '<div class="amessage"><span>' +
-            '<h4 style="display: inline;">' + messages[i].user + '</h5>' +
-            '</span>' + '<div style="float: right; font-size: 9px;">[' + messages[i].timestamp + ']</div>' +
-            '<div style="padding-top: 2px;">' + messages[i].message + '</div></div>';
+        var messages = JSON.parse(message.data);
+        for(var i=0; i < messages.length; i++)
+        {
+            document.getElementById('room_feed').innerHTML += '<div class="amessage"><span>' +
+                '<h4 style="display: inline;">' + messages[i].user + '</h5>' +
+                '</span>' + '<div style="float: right; font-size: 9px;">[' + messages[i].timestamp + ']</div>' +
+                '<div style="padding-top: 2px;">' + messages[i].message + '</div></div>';
+        }
+    }
+    catch(e)
+    {
+        console.log(e.toString());
     }
 };
 
@@ -241,6 +248,11 @@ HAYATE.app.chat.saySomething = function ()
     // clean up user input before posting
     document.getElementById('chatinput').value = '';
     httpreq.send("message="+message);
+};
+
+HAYATE.app.chat.sendMessage = function ()
+{
+    return true;
 };
 
 /**
@@ -305,50 +317,3 @@ HAYATE.app.validateSignupData = function ()
     // all is well!
     return true;
 };
-
-function dummyChat()
-{
-    var messages = [
-        {
-            'user': 'Bala',
-            'timestamp': new Date(),
-            'message': 'Hi there'
-        },
-        {
-            'user': 'Hari',
-            'timestamp': new Date(),
-            'message': 'Hi there'            
-        },
-        {
-            'user': 'Puru',
-            'timestamp': new Date(),
-            'message': 'Hi there'            
-        },
-        {
-            'user': 'Bala',
-            'timestamp': new Date(),
-            'message': 'W up?'            
-        },
-        {
-            'user': 'Puru',
-            'timestamp': new Date(),
-            'message': 'Sky'            
-        },
-        {
-            'user': 'Hari',
-            'timestamp': new Date(),
-            'message': 'Nothin much!'            
-        }
-    ];
-
-    for(var i=0; i < messages.length; i++)
-    {
-        document.getElementById('room_feed').innerHTML += '<div class="amessage"><span>' +
-            '<h4 style="display: inline;">' + messages[i].user + '</h5>' +
-            '</span>' + '<div style="float: right; font-size: 9px;">[' +
-            messages[i].timestamp.toLocaleDateString() +
-            ' ' + messages[i].timestamp.getHours() + ':' + messages[i].timestamp.getMinutes() + ':' +
-            messages[i].timestamp.getSeconds() + ']</div>' +
-            '<div style="padding-top: 2px;">' + messages[i].message + '</div></div>';
-    }
-}

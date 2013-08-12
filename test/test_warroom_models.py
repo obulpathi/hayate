@@ -7,8 +7,10 @@ import sys
 import unittest
 import logging
 
+import test_setup
+
 # basic setup
-sys.path.insert(0, 'C:\\google_appengine') # gae sdk path
+sys.path.insert(0, test_setup.GAE_SDK_PATH) 
 import dev_appserver
 dev_appserver.fix_sys_path()
 
@@ -17,24 +19,14 @@ from google.appengine.ext import testbed
 
 from warroom import models
 from warroom.library import globalKey
-
-# base class for all the test case
-class HTestCase(unittest.TestCase):
-
-    def setUp(self):
-        self.testbed = testbed.Testbed()
-        self.testbed.activate()
-        self.testbed.init_datastore_v3_stub()
-
-    def tearDown(self):
-        self.testbed.deactivate()
+from warroom.htestcase import HTestCase
 
 class SimpleTestCase(HTestCase):
 
     def testaddition(self):
         self.assertEqual(1+1, 2)
 
-class MessageTest(HTestCase):
+class MessageTestCase(HTestCase):
 
     def testMessageAdd(self):
         r_key = ndb.Key('Room', '1234', parent=globalKey())

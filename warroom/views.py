@@ -75,6 +75,11 @@ def index(request):
         u_key = s.user
         u = u_key.get()
         r_key = s.room
+
+        # redirect to rooms selection if user dint choose a room yet
+        if r_key is None:
+            return HttpResponseRedirect('/rooms')
+    
         r = r_key.get()
 
         # create a channel based using sessionid as the key
@@ -286,9 +291,7 @@ def add_message(request):
     m.message = message
     m.put()
 
-    # update the channels
     messages = []
-
     try:
         _msgformat = "{'user': '%s', 'timestamp': '%s', 'message': '%s'}"
         msg = _msgformat % (m.user.get().username,
