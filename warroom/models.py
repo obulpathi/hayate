@@ -60,3 +60,10 @@ class HSession(ndb.Model):
         """
         q = cls.query(cls.room == room_key)
         return q.iter()
+
+    @classmethod
+    def get_session_for_session_id(cls, sid):
+        """ returns the session object for the passed in session id
+        """
+        q = cls.query(cls.sessionid == sid)
+        return q.get()

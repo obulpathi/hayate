@@ -196,26 +196,60 @@ HAYATE.app.chat.onOpen = function ()
     
 };
 
-HAYATE.app.chat.onMessage = function (message)
+HAYATE.app.chat.onMessage = function (update)
 {
-    var messages = JSON.parse(message.data);
-    for(var i=0; i < messages.length; i++)
+    try
     {
-        document.getElementById('room_feed').innerHTML += '<div class="amessage"><span>' +
-            '<h4 style="display: inline;">' + messages[i].user + '</h5>' +
-            '</span>' + '<div style="float: right; font-size: 9px;">[' + messages[i].timestamp + ']</div>' +
-            '<div style="padding-top: 2px;">' + messages[i].message + '</div></div>';
+        var updates = JSON.parse(update.data);
+        if(updates.messages !== undefined)
+            HAYATE.app.chat.populateMessagesInRoom(updates.messages);
+    }
+    catch(e)
+    {
+        console.log(e.toString());
     }
 };
 
 HAYATE.app.chat.onError = function ()
 {
+    // reload the page to get a new token
+    window.location.reload();
 };
 
 HAYATE.app.chat.onClose = function ()
 {
     // reload the page to get a new token
     window.location.reload();
+};
+
+HAYATE.app.chat.populateMessagesInRoom = function (messages)
+{
+    for(var i=0; i < messages.length; i++)
+    {
+        var aMessage = document.createElement('div');
+        aMessage.className = 'amessage';
+
+        var userCntr = document.createElement('span');
+        var user = document.createElement('h4');
+        user.style.display = 'inline';
+        user.innerHTML = messages[i].user;
+        userCntr.appendChild(user);
+
+        var dateTime = document.createElement('div');
+        dateTime.style.float = 'right';
+        dateTime.style.fontSize = '9px';
+        dateTime.innerHTML = '['+messages[i].timestamp+']';
+
+        var message = document.createElement('div');
+        message.style.paddingTop = '2px';
+        message.innerHTML = messages[i].message;
+
+        aMessage.appendChild(userCntr);
+        aMessage.appendChild(dateTime);
+        aMessage.appendChild(message);
+
+        document.getElementById('room_feed').appendChild(aMessage);
+    }
 };
 
 HAYATE.app.chat.saySomething = function ()
@@ -241,6 +275,11 @@ HAYATE.app.chat.saySomething = function ()
     // clean up user input before posting
     document.getElementById('chatinput').value = '';
     httpreq.send("message="+message);
+};
+
+HAYATE.app.chat.sendMessage = function ()
+{
+    return true;
 };
 
 /**
@@ -305,4 +344,3 @@ HAYATE.app.validateSignupData = function ()
     // all is well!
     return true;
 };
-

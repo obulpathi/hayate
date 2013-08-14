@@ -10,6 +10,7 @@ urlpatterns = patterns(
     url(r'messages/add/?$', 'add_message'),
     url(r'messages/?$', 'messages'),
     url(r'rooms/?$', 'rooms'),
-    url(r'hchannel/?$', 'channel_handler'),
+    url(r'_ah/channel/connected/$', 'channel_connect'),
+    url(r'_ah/channel/disconnected/$', 'channel_disconnect'),
     url(r'^/?$', 'index'),
     )

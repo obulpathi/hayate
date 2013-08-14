@@ -9,6 +9,7 @@ from google.appengine.api import channel
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django import forms
+from django.views.decorators.csrf import csrf_exempt
 
 from warroom import models
 from warroom import salt
@@ -49,6 +50,24 @@ def get_session(request):
         s_qry = s_qry.filter(models.HSession.sessionid == sid)
         s = s_qry.get()
     return s
+
+def get_message(m):
+    """ takes a models.Message object and returns JSON representation
+    for the same.
+    """
+    _msgformat = '{"user": "%s", "timestamp": "%s", "message": "%s"}'
+    msg = _msgformat % (m.user.get().username,
+                        str(m.timestamp.strftime('%Y/%m/%d %H:%M:%S')),
+                        m.message)
+    msg = msg.replace("'", "\'")
+    return json.loads(msg)
+
+def send_updates(client_key, updates):
+    """ takes any python datastructure passed in and dumps that into the
+    channel for the client key passed
+    """
+    channel.send_message(client_key, json.dumps(updates))
+    
     
 # --------- forms ---------   
 class SignUpForm(forms.Form):
@@ -76,10 +95,10 @@ def index(request):
         u = u_key.get()
         r_key = s.room
 
+        # redirect to rooms selection if user dint choose a room yet
         if r_key is None:
-            # redirect to /rooms if user dint choose a room already
             return HttpResponseRedirect('/rooms')
-        
+    
         r = r_key.get()
 
         # create a channel based using sessionid as the key
@@ -263,20 +282,24 @@ def add_member(request):
 def messages(request):
     if request.method == 'GET':
         s = get_session(request)
-        _msgformat = "{'user': '%s', 'timestamp': '%s', 'message': '%s'}"
         messages = []
 
         try:
             for m in models.Message.get_recent(s.room, 10):
-                msg = _msgformat % (m.user.get().username,
-                                              str(m.timestamp.strftime('%Y/%m/%d %H:%M:%S')),
-                                              m.message)
-                messages.append(eval(msg))
-            channel.send_message(s.sessionid, json.dumps(messages))
+                messages.append(get_message(m))
         except Exception as e:
             logging.info(type(e))
 
+        update = {"messages": messages}
+
+        try:
+            send_updates(s.sessionid, update)
+        except Exception as e:
+            logging.info(str(e))
+
         return HttpTextResponse('', 200)
+    else:
+        return HttpTextResponse('Only GET is allowed in this endpoint', 404)
 
 @login_required
 @post_required
@@ -284,6 +307,8 @@ def add_message(request):
     # add message to DB
     message = request.POST['message']
 
+    # XXX: think of a clean fix!
+    message = message.replace('"', "'")
     s = get_session(request)
     r = s.room.get()
     m = models.Message(parent=r.key)
@@ -291,22 +316,36 @@ def add_message(request):
     m.message = message
     m.put()
 
-    # update the channels
     messages = []
-
     try:
-        _msgformat = "{'user': '%s', 'timestamp': '%s', 'message': '%s'}"
-        msg = _msgformat % (m.user.get().username,
-                                              str(m.timestamp.strftime('%Y/%m/%d %H:%M:%S')),
-                                              m.message)
-        messages.append(eval(msg))
+        messages.append(get_message(m))
     except Exception as e:
         logging.info(str(e))
-    
+
+    update = {"messages": messages}
+        
     try:
         for _s in models.HSession.get_all_sessions_for_room(s.room):
-            channel.send_message(_s.sessionid, json.dumps(messages))
+            send_updates(s.sessionid, update)
     except Exception as e:
         logging.info(type(e))
 
+    return HttpTextResponse('', 200)
+
+# following requests come from google's channel JS API.
+# so, they won't have any CSRF information and hence the exempt
+@csrf_exempt    
+def channel_connect(request):
+    # XXX: add logic to update all the clients that this user has come online
+    sid = request.POST.get('from')
+    s = models.HSession.get_session_for_session_id(sid)
+    logging.info(s.user.get().username+' connected to room '+s.room.get().projectid)
+    return HttpTextResponse('', 200)
+
+@csrf_exempt
+def channel_disconnect(request):
+    # XXX: add logic to update all the clients that this user has gone offline
+    sid = request.POST.get('from')
+    s = models.HSession.get_session_for_session_id(sid)
+    logging.info(s.user.get().username+' disconnected and was in room '+s.room.get().projectid)
     return HttpTextResponse('', 200)
