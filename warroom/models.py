@@ -42,6 +42,15 @@ class Message(ndb.Model):
         q = q.order(cls.timestamp)
         return q.iter()
 
+# descendent of Message to represent the replies in a conversation    
+class ReplyMessage(Message):
+
+    @classmethod
+    def get_for_parent(cls, p_key):
+        q = cls.query(ancestor=p_key)
+        q = q.order(cls.timestamp)
+        return q.iter()
+
 # models a hayate session
 class HSession(ndb.Model):
     whencreated = ndb.DateTimeProperty(auto_now_add=True)

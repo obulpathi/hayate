@@ -55,12 +55,19 @@ def get_message(m):
     """ takes a models.Message object and returns JSON representation
     for the same.
     """
-    _msgformat = '{"user": "%s", "timestamp": "%s", "message": "%s"}'
+    _msgformat = '{"user": "%s", "timestamp": "%s", "message": "%s", "id": "%s"}'
     msg = _msgformat % (m.user.get().username,
                         str(m.timestamp.strftime('%Y/%m/%d %H:%M:%S')),
-                        m.message)
+                        m.message,
+        m.key.id())
     msg = msg.replace("'", "\'")
     return json.loads(msg)
+
+def encode_password(p):
+    """ takes a password plain text and encodes it as per hayate's password
+    handling policy
+    """
+    return hashlib.sha256(''.join([p, salt.Salt.salt()])).hexdigest()
 
 def send_updates(client_key, updates):
     """ takes any python datastructure passed in and dumps that into the
@@ -112,23 +119,25 @@ def index(request):
     
 def login(request):
     if request.method == 'GET':
+
+        # user is logged in already
+        s = get_session(request)
+        if s is not None:
+            return HttpResponseRedirect('/')
+
         return render(request, 'login.html', {})
     elif request.method == 'POST':
         email = request.POST.get('email')
         password = request.POST.get('password')
-        # query the DB for password and compare
-        # q = models.User.query(ancestor=globalKey())
-        # q = q.filter(models.User.email == email)
-        # u = q.get()
         u = models.User.get_by_id(email, parent=globalKey())
 
         if u is None:
             return render(request, 'login.html', {'error': 'Invalid email! You might want to signup first!'})
 
-        if u.password == hashlib.sha256(password+salt.Salt.salt()).hexdigest():
+        if u.password == encode_password(password):
             # valid user
             # create a session
-            s = models.HSession(parent=globalKey()) # dummy key which acts as parent for all entities in Hayate
+            s = models.HSession(parent=globalKey())
             s.user = u.key
             s.sessionid = randomString(15)
             s.put()
@@ -154,15 +163,23 @@ def rooms(request):
         u = u_key.get()
 
     if request.method == 'GET':
+        error = request.GET.get('e', None)
+        if error == 'no_room':
+            error = 'Please choose a room!'
         rooms = models.Room.get_eligible_rooms_for_user(u.key)
         room_list = []
         if rooms is not None:
             for r in rooms:
                 room_list.append({'id': r.key.id(), 'projectid': r.projectid})
         return render(request, 'rooms.html', {'member': u.nickname,
-                                              'rooms': room_list})
+                                              'rooms': room_list,
+                                              'error': error})
     elif request.method == 'POST':
-        r_id = request.POST['room']
+        r_id = request.POST.get('room', None)
+
+        if r_id is None:
+            return HttpResponseRedirect('/rooms?e=no_room')
+
         r_key = ndb.Key('Room', int(r_id), parent=globalKey())
         s.room = r_key
         s.put()
@@ -223,7 +240,7 @@ def signup(request):
             u.username = form.cleaned_data.get('username')
             u.email = form.cleaned_data.get('email')
             password = form.cleaned_data.get('password')
-            u.password = hashlib.sha256(password+salt.Salt.salt()).hexdigest()
+            u.password = encode_password(password)
             u.nickname = form.cleaned_data.get('nickname')
             u.put()
             return HttpResponseRedirect('/')
@@ -283,14 +300,19 @@ def messages(request):
     if request.method == 'GET':
         s = get_session(request)
         messages = []
+        replies = {}
 
         try:
             for m in models.Message.get_recent(s.room, 10):
+                r = []
+                for c in models.ReplyMessage.get_for_parent(m.key):
+                    r.append(get_message(c))
+                replies[m.key.id()] = r
                 messages.append(get_message(m))
         except Exception as e:
-            logging.info(type(e))
+            logging.info(str(e))
 
-        update = {"messages": messages}
+        update = {"messages": messages, "replies": replies}
 
         try:
             send_updates(s.sessionid, update)
@@ -304,14 +326,30 @@ def messages(request):
 @login_required
 @post_required
 def add_message(request):
-    # add message to DB
-    message = request.POST['message']
+
+    message = request.POST.get('message', None)
+    conv_id = request.POST.get('conv_id', None)
+
+    if message is None:
+        logging.error('add_message: empty message from client')
+        return HttpTextResponse('', 200)
 
     # XXX: think of a clean fix!
     message = message.replace('"', "'")
     s = get_session(request)
     r = s.room.get()
-    m = models.Message(parent=r.key)
+
+    # all the messages have corresponding room as the ancestor by default
+    anc = r.key
+
+    # check if the message belongs to a conversation, if yes
+    # add it to appropriate conversation
+    if conv_id is not None:
+        anc = ndb.Key('Message', int(conv_id), parent=r.key)
+        m = models.ReplyMessage(parent=anc)
+    else:
+        m = models.Message(parent=anc)
+        
     m.user = s.user
     m.message = message
     m.put()
@@ -322,8 +360,14 @@ def add_message(request):
     except Exception as e:
         logging.info(str(e))
 
-    update = {"messages": messages}
-        
+    # messages are replies if the conv_id is not None
+    if conv_id is None:
+        update = {"messages": messages}
+    else:
+        update = {"replies": {conv_id: messages}}
+
+    logging.info(str(update))
+            
     try:
         for _s in models.HSession.get_all_sessions_for_room(s.room):
             send_updates(s.sessionid, update)

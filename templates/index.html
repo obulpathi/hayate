@@ -18,16 +18,25 @@
   <form action="javascript:HAYATE.app.chat.sendMessage(this);">
   <table border="0px">
     <tr>
-      <td><input type="text" id="chatinput" autofocus="autofocus"></input></td>
+      <td><textarea type="text" id="chatinput" autofocus="autofocus" dir="ltr"></textarea></td>
       <td>
-        <input class="hButton" type="submit"
-               onclick="HAYATE.app.chat.saySomething()"
+        <input class="hButton" type="submit" id="have_your_say"
+               onclick="HAYATE.app.chat.haveYourSay()"
                value="Have your Say"
                href="#"
                style="width: 100px;
                       height: 40px;"
                />
       </td>
+      <td>
+        <input class="hButton" type="submit" id="start_new"
+               onclick="HAYATE.app.chat.startNewConversation()"
+               value="Start New"
+               href="#"
+               style="width: 100px;
+                      height: 40px;"
+               />
+      </td>      
     </tr>
   </table>
   </form>

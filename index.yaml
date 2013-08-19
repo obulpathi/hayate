@@ -20,3 +20,8 @@ indexes:
   properties:
   - name: timestamp
     direction: desc
+
+- kind: ReplyMessage
+  ancestor: yes
+  properties:
+  - name: timestamp

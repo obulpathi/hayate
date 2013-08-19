@@ -5,6 +5,11 @@
  * trying to use module design pattern
  */
 
+// all base object additions/tweaks go here
+String.prototype.chomp = function() {
+  return this.replace(/[\s\n\r]+$/g, "");
+};
+
 // root namespace for the project
 HAYATE = {};
 
@@ -17,6 +22,9 @@ HAYATE.app = {};
 // all chat related utilities go here
 HAYATE.app.chat = {};
 
+// all chat utils go here
+HAYATE.app.chat.util = {};
+
 // all the utilities go here
 HAYATE.util = {};
 
@@ -24,7 +32,8 @@ HAYATE.util = {};
 
 HAYATE.core.getXMLHttpRequest = function ()
 {
-    return new XMLHttpRequest();
+    var httpReq = new XMLHttpRequest();
+    return httpReq;
 };
 
 HAYATE.core.killMyParent = function (element)
@@ -122,9 +131,10 @@ HAYATE.app.addMember_ = function (element)
     }
 
     httpreq.open("POST", "/rooms/add_member");
-    var cookie = document.cookie;
     // django CSRF
+    var cookie = document.cookie;
     httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));
+
     httpreq.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
     httpreq.onreadystatechange = function()
@@ -183,9 +193,6 @@ HAYATE.app.chat.onOpen = function ()
         return;
 
     httpreq.open("GET", "/messages");
-    var cookie = document.cookie;
-    // django CSRF
-    httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));
 
     httpreq.onreadystatechange = function()
     {
@@ -202,7 +209,14 @@ HAYATE.app.chat.onMessage = function (update)
     {
         var updates = JSON.parse(update.data);
         if(updates.messages !== undefined)
-            HAYATE.app.chat.populateMessagesInRoom(updates.messages);
+        {
+            HAYATE.app.chat.populateMessagesInRoom(updates.messages, updates.replies);
+        }
+        else if(updates.replies !== undefined)
+        {
+            HAYATE.app.chat.populateReplyInRoom(updates.replies);
+        }
+            
     }
     catch(e)
     {
@@ -222,49 +236,187 @@ HAYATE.app.chat.onClose = function ()
     window.location.reload();
 };
 
-HAYATE.app.chat.populateMessagesInRoom = function (messages)
+HAYATE.app.chat.populateMessagesInRoom = function (messages, replies)
 {
+
     for(var i=0; i < messages.length; i++)
     {
-        var aMessage = document.createElement('div');
-        aMessage.className = 'amessage';
+        var aMessage = HAYATE.app.chat.util.createMessage(messages[i], 'amessage');
 
-        var userCntr = document.createElement('span');
-        var user = document.createElement('h4');
-        user.style.display = 'inline';
-        user.innerHTML = messages[i].user;
-        userCntr.appendChild(user);
+        //console.log(aMessage.outerHTML);
 
-        var dateTime = document.createElement('div');
-        dateTime.style.float = 'right';
-        dateTime.style.fontSize = '9px';
-        dateTime.innerHTML = '['+messages[i].timestamp+']';
+        var aConversation = document.createElement('div');
+        aConversation.className = 'aconversation';
+        aConversation.appendChild(aMessage);
+        aConversation.id = messages[i].id;
+        aConversation.onclick = HAYATE.app.chat.selectConversation;
 
-        var message = document.createElement('div');
-        message.style.paddingTop = '2px';
-        message.innerHTML = messages[i].message;
-
-        aMessage.appendChild(userCntr);
-        aMessage.appendChild(dateTime);
-        aMessage.appendChild(message);
-
-        document.getElementById('room_feed').appendChild(aMessage);
+        // compose all the replies and append to conversation
+        if(replies !== undefined)
+        {
+            var replyMessages = replies[messages[i].id];
+            if(replyMessages !== undefined)
+            {
+                for(var j=0; j < replyMessages.length; j++ )
+                {
+                    var aReply = HAYATE.app.chat.util.createMessage(replyMessages[j], 'areply');
+                    aConversation.appendChild(aReply);
+                }
+            }
+        }
+        document.getElementById('room_feed').appendChild(aConversation);
     }
 };
 
-HAYATE.app.chat.saySomething = function ()
+HAYATE.app.chat.util.createMessage = function (message, className)
 {
+    var aMessage = document.createElement('div');
+    aMessage.className = className;
+
+    var userCntr = document.createElement('span');
+    var user = document.createElement('h4');
+    user.style.display = 'inline';
+    user.innerHTML = message.user;
+    user.style.paddingTop = '2px';
+    userCntr.appendChild(user);
+
+    var dateTime = document.createElement('div');
+    dateTime.style.float = 'right';
+    dateTime.style.fontSize = '9px';
+    dateTime.innerHTML = '['+message.timestamp+']';
+
+    var msg = document.createElement('div');
+    msg.style.paddingTop = '2px';
+    msg.innerHTML = message.message;
+
+    aMessage.appendChild(userCntr);
+    aMessage.appendChild(dateTime);
+    aMessage.appendChild(msg);
+
+    return aMessage;
+};
+
+HAYATE.app.chat.populateReplyInRoom = function (replies)
+{
+    for(var conv_id in replies)
+    {
+        var aConversation = document.getElementById(conv_id);
+        var replyMessages = replies[conv_id];
+        if(replyMessages !== undefined)
+        {
+            for(var j=0; j < replyMessages.length; j++ )
+            {
+                var aReply = HAYATE.app.chat.util.createMessage(replyMessages[j], 'areply');
+                aConversation.appendChild(aReply);
+            }
+        }
+    }
+
+    return true;
+};
+
+HAYATE.app.chat.haveYourSay = function ()
+{
+    var message = document.getElementById('chatinput').value;
+    message = message.chomp();
+    
+    // nothing to do, is message is empty
+    if(message === "" || message === undefined || !message)
+    {
+        return true;
+    }
+    
     var httpreq = HAYATE.core.getXMLHttpRequest();
     if(!httpreq)
     {
         return;
     }
-
-    var message = document.getElementById('chatinput').value;
     httpreq.open("POST", "/messages/add");
-    var cookie = document.cookie;
     // django CSRF
+    var cookie = document.cookie;
+    httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));    
+    httpreq.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+    httpreq.onreadystatechange = function()
+    {
+        // nothing to do
+    };
+
+    // get the conversation id and send it to the server
+    var conv_id = document.getElementById('chatinput').getAttribute('conv_id');
+
+    // clean up user input before posting
+    document.getElementById('chatinput').value = '';
+    httpreq.send("conv_id="+conv_id+"&message="+message);
+};
+
+HAYATE.app.chat.sendMessage = function ()
+{
+    return true;
+};
+
+HAYATE.app.chat.selectConversation = function (event)
+{
+    console.log(event.currentTarget.outerHTML);
+
+    var currTarget = event.currentTarget;
+    var ci = document.getElementById('chatinput');
+
+    // pick the current conversation, if any, and reset it
+    var currConv = document.getElementById(ci.getAttribute('conv_id'));
+    if(currConv && currConv !== undefined)
+    {
+        currConv.style.backgroundColor = '#E9EAEB';
+    }
+    
+    currTarget.style.backgroundColor = 'lightblue';
+    
+    // set conversation id on the chat input node
+    ci.setAttribute('conv_id', currTarget.id);
+    // enable the "Have your Say" button
+    var haveUrSay = document.getElementById('have_your_say');
+    haveUrSay.disabled = false;
+
+    // stop the event from bubbling to html .. undoing this select
+    event.stopPropagation();
+};
+
+HAYATE.app.chat.undoSelectConversation = function (event)
+{
+    // pick the current conversation, if any, and reset it
+    var currConv = document.getElementById(
+        document.getElementById('chatinput').getAttribute('conv_id'));
+    if(currConv && currConv !== undefined)
+    {
+        currConv.style.backgroundColor = '#E9EAEB';
+    }
+    
+    // get hold of the "Have your Say" button and disable it.
+    // disable the "Have your Say" button
+    var haveUrSay = document.getElementById('have_your_say');
+    haveUrSay.disabled = true;
+};
+
+HAYATE.app.chat.startNewConversation = function (event)
+{
+    var message = document.getElementById('chatinput').value;
+    // nothing to do, is message is empty
+    if(message === "" || message === undefined || !message)
+    {
+        return true;
+    }
+    
+    var httpreq = HAYATE.core.getXMLHttpRequest();
+    if(!httpreq)
+    {
+        return;
+    }
+    
+    httpreq.open("POST", "/messages/add");
+    // django CSRF
+    var cookie = document.cookie;
     httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));
+    
     httpreq.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
     httpreq.onreadystatechange = function()
@@ -275,11 +427,6 @@ HAYATE.app.chat.saySomething = function ()
     // clean up user input before posting
     document.getElementById('chatinput').value = '';
     httpreq.send("message="+message);
-};
-
-HAYATE.app.chat.sendMessage = function ()
-{
-    return true;
 };
 
 /**
@@ -343,4 +490,24 @@ HAYATE.app.validateSignupData = function ()
 
     // all is well!
     return true;
+};
+
+HAYATE.util.logoutSession = function (event)
+{
+    var httpreq = HAYATE.core.getXMLHttpRequest();
+    if(!httpreq)
+    {
+        return;
+    }
+
+    httpreq.open("POST", "/logout");
+    // django CSRF
+    var cookie = document.cookie;
+    httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));
+    
+    httpreq.onreadystatechange = function()
+    {
+        // nothing to do
+    };
+    httpreq.send();    
 };

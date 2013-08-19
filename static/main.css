@@ -58,11 +58,22 @@ p,a,h1,h2,h3,h4,h5,h6
 .heading { text-align: center; }
 .main_menu_selected { background-color: #A599FF; border-radius: 5px 5px 0 0; height: 25px; padding: 0 5px 3px 5px; }
 .main_menu_item { padding: 0 5px 3px 5px; }
-.amessage
+.aconversation
 {
     font-size: 12px;
-    margin: 2px;
+    cursor: pointer;
     background-color: #E9EAEB;
+    border-bottom: 2px rgb(0, 2, 34) solid
+}
+.amessage
+{
+    margin: 2px;
+    font-weight: bold;
+}
+.areply
+{
+    padding-left: 10px;
+    border-top: 1px rgb(0, 2, 34) solid;
 }
 .hButton
 {

@@ -3,7 +3,7 @@
 <script type="text/javascript" src="/_ah/channel/jsapi"></script>
 {% endblock %}
 {% block bodystaticfoot %}
-<script>
+<script type="text/javascript">
 
   openChannel = function()
   {
@@ -18,6 +18,38 @@
   }
 
   setTimeout(HAYATE.app.chat.initialize, 100);
+
+  // add a click handler on html to deselect any conversation
+  document.getElementsByTagName('html')[0].onclick =
+  HAYATE.app.chat.undoSelectConversation;
+
+  // do the above on body load also
+  document.getElementsByTagName('body')[0].onload =
+  HAYATE.app.chat.undoSelectConversation;
+
+  // click in chatinput field should not deselect the conversation
+  document.getElementById('chatinput').onclick = function (event)
+  {
+  // also, scroll the current conversation into view
+  var currConv = document.getElementById(event.currentTarget.getAttribute('conv_id'));
+  if(currConv && currConv !== undefined)
+  {
+  currConv.scrollIntoView();
+  }
+  event.stopPropagation();
+  };
+
+  // handle 'Enter' key press in chatinput
+  document.getElementById('chatinput').onkeyup = function (event)
+  {
+  // Enter key should work only when user has chosen a conversation
+  if(event.which === 13 &&
+  document.getElementById('have_your_say').disabled === false)
+  {
+  HAYATE.app.chat.haveYourSay();
+  return true;
+  }
+  };
   
 </script>
 {% endblock %}

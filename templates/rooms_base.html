@@ -2,6 +2,9 @@
 {% block detail %}
 <div id="rooms">
   <h3>Rooms</h3>
+  {% if error %}
+  <p style="color: red;">{{error}}</p>
+  {% endif %}
       <div style="float: right; "><a class="hButton"
       href="/rooms/create">Create a new room</a></div>
       <div>
