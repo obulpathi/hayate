@@ -5,7 +5,7 @@
  * trying to use module design pattern
  */
 
-// all base object additions/tweaks go here
+// all default DOM object additions/tweaks go here
 String.prototype.chomp = function() {
   return this.replace(/[\s\n\r]+$/g, "");
 };
@@ -188,6 +188,11 @@ HAYATE.app.chat.initialize = function()
 
 HAYATE.app.chat.onOpen = function ()
 {
+    setTimeout(HAYATE.app.chat.getMessages, 2000);
+};
+
+HAYATE.app.chat.getMessages = function ()
+{
     var httpreq = HAYATE.core.getXMLHttpRequest();
     if(!httpreq)
         return;
@@ -199,8 +204,7 @@ HAYATE.app.chat.onOpen = function ()
         // nothing to do
     };
     
-    httpreq.send();
-    
+    httpreq.send();    
 };
 
 HAYATE.app.chat.onMessage = function (update)
@@ -319,6 +323,7 @@ HAYATE.app.chat.haveYourSay = function ()
 {
     var message = document.getElementById('chatinput').value;
     message = message.chomp();
+    message = message.replace(/\n+/g, " ")    
     
     // nothing to do, is message is empty
     if(message === "" || message === undefined || !message)
@@ -400,6 +405,8 @@ HAYATE.app.chat.undoSelectConversation = function (event)
 HAYATE.app.chat.startNewConversation = function (event)
 {
     var message = document.getElementById('chatinput').value;
+    message = message.chomp();
+    message = message.replace(/\n+/g, " ")
     // nothing to do, is message is empty
     if(message === "" || message === undefined || !message)
     {

@@ -314,6 +314,8 @@ def messages(request):
 
         update = {"messages": messages, "replies": replies}
 
+        logging.info(str(update))
+
         try:
             send_updates(s.sessionid, update)
         except Exception as e:
@@ -370,7 +372,7 @@ def add_message(request):
             
     try:
         for _s in models.HSession.get_all_sessions_for_room(s.room):
-            send_updates(s.sessionid, update)
+            send_updates(_s.sessionid, update)
     except Exception as e:
         logging.info(type(e))
 
