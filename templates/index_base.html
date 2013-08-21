@@ -25,7 +25,7 @@
 
   // do the above on body load also
   document.getElementsByTagName('body')[0].onload =
-  HAYATE.app.chat.undoSelectConversation;
+  HAYATE.app.bodyLoaded;
 
   // click in chatinput field should not deselect the conversation
   document.getElementById('chatinput').onclick = function (event)
@@ -50,7 +50,6 @@
   return true;
   }
   };
-  
 </script>
 {% endblock %}
 {% block detail %}

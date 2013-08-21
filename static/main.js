@@ -179,6 +179,72 @@ HAYATE.app.addMember = function (element)
     parent.appendChild(divElement);
 };
 
+HAYATE.app.populateUsersInRoom = function (users)
+{
+    var usersOnline = document.getElementById('users_online');
+    var usersOffline = document.getElementById('users_offline');
+
+    for(var i = 0; i < users.length; i++)
+    {
+        var u = users[i];
+        var user = document.getElementById(u.id);
+
+        if(user && user !== undefined)
+        {
+            // user info already populated
+            // look for status change
+            if(user.parentNode.id === 'users_online' && u.status === "online")
+                continue;
+            if(user.parentNode.id === 'users_offline' && u.status === "offline")
+                continue;
+
+            HAYATE.core.killMe(user);
+        }
+
+        // populate user info
+        var aUser = document.createElement('div');
+        aUser.className = 'auser';
+        aUser.id = users[i].id;
+        aUser.innerHTML = users[i].nickname;
+
+        if(users[i].status === 'online')
+        {
+            usersOnline.appendChild(aUser);
+        }
+        else
+        {
+            usersOffline.appendChild(aUser);
+        }
+    }
+    
+    return true;
+};
+
+HAYATE.app.getUsers = function (event)
+{
+    var httpreq = HAYATE.core.getXMLHttpRequest();
+    if(!httpreq)
+        return;
+
+    httpreq.open("GET", "/users");
+
+    httpreq.onreadystatechange = function()
+    {
+        // nothing to do
+    };
+    
+    httpreq.send();    
+};
+
+/**
+ * to invoke all the onload events
+ */
+HAYATE.app.bodyLoaded = function (event)
+{
+    HAYATE.app.chat.undoSelectConversation(event);
+};
+
+
 // Implementation of chat related functionalities
 
 HAYATE.app.chat.initialize = function()
@@ -189,6 +255,7 @@ HAYATE.app.chat.initialize = function()
 HAYATE.app.chat.onOpen = function ()
 {
     setTimeout(HAYATE.app.chat.getMessages, 2000);
+    setTimeout(HAYATE.app.getUsers, 2000);
 };
 
 HAYATE.app.chat.getMessages = function ()
@@ -220,7 +287,10 @@ HAYATE.app.chat.onMessage = function (update)
         {
             HAYATE.app.chat.populateReplyInRoom(updates.replies);
         }
-            
+        else if(updates.users != undefined)
+        {
+            HAYATE.app.populateUsersInRoom(updates.users)
+        }
     }
     catch(e)
     {

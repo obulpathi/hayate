@@ -51,7 +51,7 @@ def get_session(request):
         s = s_qry.get()
     return s
 
-def get_message(m):
+def get_message_json(m):
     """ takes a models.Message object and returns JSON representation
     for the same.
     """
@@ -60,6 +60,20 @@ def get_message(m):
                         str(m.timestamp.strftime('%Y/%m/%d %H:%M:%S')),
                         m.message,
         m.key.id())
+    msg = msg.replace("'", "\'")
+    return json.loads(msg)
+
+def get_user_json(u, status="online"):
+    """takes a models.User object and returns JSON representation
+    for the same
+    """
+    _msgformat = '''{
+        "id": "%s",
+        "username": "%s",
+        "email": "%s",
+        "nickname": "%s",
+        "status": "%s"}'''
+    msg = _msgformat % (u.key.id(), u.username, u.email, u.nickname, status)
     msg = msg.replace("'", "\'")
     return json.loads(msg)
 
@@ -74,7 +88,17 @@ def send_updates(client_key, updates):
     channel for the client key passed
     """
     channel.send_message(client_key, json.dumps(updates))
-    
+
+def update_room(room_key, updates):
+    """ takes a hayate room's key, an update and sends the update
+    to all the active sessions in that room
+    """
+    try:
+        for _s in models.HSession.get_all_sessions_for_room(room_key):
+            send_updates(_s.sessionid, updates)
+    except Exception as e:
+        logging.info(type(e))
+
     
 # --------- forms ---------   
 class SignUpForm(forms.Form):
@@ -110,7 +134,7 @@ def index(request):
 
         # create a channel based using sessionid as the key
         token = channel.create_channel(s.sessionid)
-        logging.info('created token: ' + str(token))
+        #logging.info('created token: ' + str(token))
         return render(request, 'index.html', {'member': u.nickname,
                                           'room': r.projectid,
                                           'admin': s.is_admin(),
@@ -201,7 +225,7 @@ def create_room(request):
         return render(request, 'create_room.html', {'member': u.nickname,
                                                     'form': form})
     elif request.method == 'POST':
-        logging.info('room creation request')
+        #logging.info('room creation request')
         form = CreateRoomForm(request.POST)
         if form.is_valid():
             projectid = form.cleaned_data.get('projectid').upper()
@@ -253,11 +277,19 @@ def signup(request):
 @login_required    
 @post_required
 def logout(request):
-    logging.info('logout initialized')
+    #logging.info('logout initialized')
     request.session.flush()
 
-    # delete the current session
     s = get_session(request)
+    # if the session has been active yet, notify the room about the logout
+    if s is not None:
+        u = s.user.get()
+        users = []
+        users.append(get_user_json(u, 'offline'))
+        updates = {"users": users}
+        update_room(s.room, updates)
+
+    # delete the current session
     if s is None: # no active session
         return render(request, 'login.html', {})
     else: # delete it
@@ -306,15 +338,15 @@ def messages(request):
             for m in models.Message.get_recent(s.room, 10):
                 r = []
                 for c in models.ReplyMessage.get_for_parent(m.key):
-                    r.append(get_message(c))
+                    r.append(get_message_json(c))
                 replies[m.key.id()] = r
-                messages.append(get_message(m))
+                messages.append(get_message_json(m))
         except Exception as e:
             logging.info(str(e))
 
         update = {"messages": messages, "replies": replies}
 
-        logging.info(str(update))
+        #logging.info(str(update))
 
         try:
             send_updates(s.sessionid, update)
@@ -358,7 +390,7 @@ def add_message(request):
 
     messages = []
     try:
-        messages.append(get_message(m))
+        messages.append(get_message_json(m))
     except Exception as e:
         logging.info(str(e))
 
@@ -368,7 +400,7 @@ def add_message(request):
     else:
         update = {"replies": {conv_id: messages}}
 
-    logging.info(str(update))
+    #logging.info(str(update))
             
     try:
         for _s in models.HSession.get_all_sessions_for_room(s.room):
@@ -378,6 +410,32 @@ def add_message(request):
 
     return HttpTextResponse('', 200)
 
+def users(request):
+    # send {users: ...} update in the requesting channel
+    if request.method == 'GET':
+
+        try:
+            s = get_session(request)
+            r = s.room.get()
+            all_users = r.users
+            all_users.append(r.admin)
+            active_users = [_s.user for _s in models.HSession.get_all_sessions_for_room(s.room)]
+    
+            users = []
+            for _u in all_users:
+                status = 'online' if _u in active_users else 'offline'
+                u = _u.get()
+                users.append(get_user_json(u, status))
+        except Exception as e:
+            logging.error(str(e))
+            
+        updates = {"users": users}
+        #logging.info(str(updates))
+        send_updates(s.sessionid, updates)
+        return HttpTextResponse('', 200)
+    else:
+        return HttpTextResponse('Only GET is supported in this endpoint', 404)
+    
 # following requests come from google's channel JS API.
 # so, they won't have any CSRF information and hence the exempt
 @csrf_exempt    
@@ -386,6 +444,12 @@ def channel_connect(request):
     sid = request.POST.get('from')
     s = models.HSession.get_session_for_session_id(sid)
     logging.info(s.user.get().username+' connected to room '+s.room.get().projectid)
+
+    u = s.user.get()
+    users = []
+    users.append(get_user_json(u))
+    updates = {"users": users}
+    update_room(s.room, updates)
     return HttpTextResponse('', 200)
 
 @csrf_exempt
@@ -393,5 +457,14 @@ def channel_disconnect(request):
     # XXX: add logic to update all the clients that this user has gone offline
     sid = request.POST.get('from')
     s = models.HSession.get_session_for_session_id(sid)
-    logging.info(s.user.get().username+' disconnected and was in room '+s.room.get().projectid)
+
+    # if the session was active yet, notify the room about the logout
+    if s is not None:
+        logging.info(s.user.get().username+' disconnected from room '+s.room.get().projectid)
+        u = s.user.get()
+        users = []
+        updates = {"users": users.append(get_user_json(u, 'offline'))}
+        update_room(s.room, updates)
+        
     return HttpTextResponse('', 200)
+

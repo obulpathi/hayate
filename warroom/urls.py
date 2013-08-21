@@ -12,5 +12,6 @@ urlpatterns = patterns(
     url(r'rooms/?$', 'rooms'),
     url(r'_ah/channel/connected/$', 'channel_connect'),
     url(r'_ah/channel/disconnected/$', 'channel_disconnect'),
+    url(r'users/?$', 'users'),
     url(r'^/?$', 'index'),
     )

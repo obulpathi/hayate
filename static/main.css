@@ -52,8 +52,9 @@ p,a,h1,h2,h3,h4,h5,h6
     display: inline;
     height: 40px;
 }
-#fly_out_container
+#tasks_area
 {
+    height: 300px;
 }
 .heading { text-align: center; }
 .main_menu_selected { background-color: #A599FF; border-radius: 5px 5px 0 0; height: 25px; padding: 0 5px 3px 5px; }
@@ -84,4 +85,9 @@ p,a,h1,h2,h3,h4,h5,h6
     font-size: 12px;
     font-weight: bold;
     padding: 4px;
+}
+.auser
+{
+    border-top: 1px rgb(0, 2, 34) solid;
+    padding: 2px;
 }
