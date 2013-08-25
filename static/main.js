@@ -197,6 +197,15 @@ HAYATE.app.bodyLoaded = function (event)
     HAYATE.app.chat.undoSelectConversation(event);
 };
 
+/**
+ * handles click event in any part of the page
+ */
+HAYATE.app.handleClick = function (event)
+{
+    HAYATE.app.chat.undoSelectConversation();
+    HAYATE.app.users.undoUserMenu();
+};
+
 
 // Implementation of chat related functionalities
 
@@ -579,9 +588,9 @@ HAYATE.app.users.populateUsersInRoom = function (users)
         aUser.id = users[i].id;
         aUser.innerHTML = users[i].nickname;
         aUser.style.cursor = 'pointer';
-        aUser.onclick = HAYATE.app.users.handleClick;
-        aUser.title = 'Click to see menu';
+        aUser.title = 'Right click to see menu';
         aUser.setAttribute('nickname', users[i].nickname);
+        aUser.oncontextmenu = HAYATE.app.users.handleClick;
 
         if(users[i].status === 'online')
         {
@@ -614,9 +623,9 @@ HAYATE.app.users.getUsers = function (event)
 
 HAYATE.app.users.handleClick = function (event)
 {
-    if(!document.getElementById('user_menu'))
+    if(!document.getElementById('user_menu') && event.button === 2)
     {
-        var elt = event.currentTarget;
+        var elt = event.target;
         // right click on user... display the menu
         var userMenuContr = document.createElement('div');
         userMenuContr.id = 'user_menu';
@@ -640,6 +649,16 @@ HAYATE.app.users.handleClick = function (event)
         
         elt.appendChild(userMenuContr);
     }
+
+    // suppress the default behavior
+    event.preventDefault();
+};
+
+HAYATE.app.users.undoUserMenu = function (event)
+{
+    var userMenu = document.getElementById('user_menu');
+    if(userMenu)
+        userMenu.remove();
 };
 
 /**
@@ -722,7 +741,7 @@ HAYATE.app.tasks.assignTask = function (event)
     var userNode = event.currentTarget.parentNode.parentNode;
     var title = 'New task for ' + userNode.getAttribute('nickname');
     var for_user = userNode.id;
-    document.getElementById('user_menu').remove();
+    HAYATE.app.users.undoUserMenu();
     HAYATE.app.tasks.newActionItemWin(title, for_user, HAYATE.app.tasks.createNewTask);
     event.stopPropagation();
     return true;
