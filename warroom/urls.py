@@ -13,5 +13,7 @@ urlpatterns = patterns(
     url(r'_ah/channel/connected/$', 'channel_connect'),
     url(r'_ah/channel/disconnected/$', 'channel_disconnect'),
     url(r'users/?$', 'users'),
+    url(r'tasks/create/?$', 'create_task'),
+    url(r'tasks/todo/create/?$', "create_todo"),
     url(r'^/?$', 'index'),
     )

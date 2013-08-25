@@ -61,7 +61,7 @@ def get_message_json(m):
                         m.message,
         m.key.id())
     msg = msg.replace("'", "\'")
-    return json.loads(msg)
+    return json.loads(msg, strict=False)
 
 def get_user_json(u, status="online"):
     """takes a models.User object and returns JSON representation
@@ -75,7 +75,7 @@ def get_user_json(u, status="online"):
         "status": "%s"}'''
     msg = _msgformat % (u.key.id(), u.username, u.email, u.nickname, status)
     msg = msg.replace("'", "\'")
-    return json.loads(msg)
+    return json.loads(msg, strict=False)
 
 def encode_password(p):
     """ takes a password plain text and encodes it as per hayate's password
@@ -435,7 +435,53 @@ def users(request):
         return HttpTextResponse('', 200)
     else:
         return HttpTextResponse('Only GET is supported in this endpoint', 404)
-    
+
+@login_required
+@post_required
+def create_todo(request):
+    try:
+        s = get_session(request)
+        subject = request.POST.get('subject', None)
+        action = request.POST.get('action', None)
+
+        todo = models.Todo(parent=s.room)
+        todo.subject = subject
+        todo.action = action
+        todo.owner = s.user
+
+        todo.put()
+
+        return HttpTextResponse('', 200)
+    except Exception as e:
+        logging.error(str(e))
+
+@login_required
+@post_required
+def create_task(request):
+    try:
+        s = get_session(request)
+        subject = request.POST.get('subject', None)
+        action = request.POST.get('action', None)
+        owner = request.POST.get('for_user', None)
+
+        # if the owner and current user are same, it is a todo
+        if owner == s.user.get().email:
+            return create_todo(request)
+
+        owner = models.User.get_by_id(owner, parent=globalKey())
+        
+        task = models.Task(parent=s.room)
+        task.subject = subject
+        task.action = action
+        task.creator = s.user
+        task.owner = owner.key
+
+        task.put()
+
+        return HttpTextResponse('', 200)
+    except Exception as e:
+        logging.error(str(e))
+        
 # following requests come from google's channel JS API.
 # so, they won't have any CSRF information and hence the exempt
 @csrf_exempt    

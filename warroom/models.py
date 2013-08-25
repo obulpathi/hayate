@@ -23,9 +23,6 @@ class Room(ndb.Model):
 
     def is_user_present(self, user_key):
         return user_key in self.users
-    
-class Task(ndb.Model):
-    pass
 
 # a message
 # descendent of Room
@@ -50,6 +47,26 @@ class ReplyMessage(Message):
         q = cls.query(ancestor=p_key)
         q = q.order(cls.timestamp)
         return q.iter()
+
+# child class of Message representing an update on a task    
+class TaskUpdate(Message):
+    pass
+
+class ActionItem(ndb.Model):
+    timestamp = ndb.DateTimeProperty(auto_now_add=True)
+    subject = ndb.StringProperty()
+    action = ndb.StringProperty()
+    status = ndb.IntegerProperty(choices=[0, 1], default=0)
+    owner = ndb.KeyProperty(kind=User) # who owns this currently
+    priority = ndb.IntegerProperty(choices=[1, 2, 3, 4, 5], default=3)
+
+# models a task in hayate
+class Task(ActionItem):
+    creator = ndb.KeyProperty(kind=User) # who created this task
+
+# models a Todo otherwise, self assigned task for a user
+class Todo(ActionItem):
+    pass
 
 # models a hayate session
 class HSession(ndb.Model):

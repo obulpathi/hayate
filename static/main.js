@@ -19,11 +19,17 @@ HAYATE.core = {};
 // all the application related components go here
 HAYATE.app = {};
 
-// all chat related utilities go here
+// all chat related components go here
 HAYATE.app.chat = {};
 
 // all chat utils go here
 HAYATE.app.chat.util = {};
+
+// all task related components go here
+HAYATE.app.tasks = {};
+
+// all user related components go here
+HAYATE.app.users = {};
 
 // all the utilities go here
 HAYATE.util = {};
@@ -170,70 +176,17 @@ HAYATE.app.addMember = function (element)
     }
 
     var divElement = HAYATE.core.createElement('div', 'add_member_container');
+    divElement.style.boxShadow = '1px 1px 1px';
+
     var formElement = HAYATE.core.createElement('form', 'add_member_form');
     formElement.style.display = "inline";
-    divElement.innerHTML = "<input type=\"email\" name=\"email\" id=\"add_member_email\"/>" +
+    divElement.innerHTML = "Email of a Hayate Member: <input type=\"email\" name=\"email\" id=\"add_member_email\"/>" +
         "<button class=\"hButton\" " +
-        "onclick=\"HAYATE.app.addMember_(this.parentNode)\">Add</button>" + 
-        "<button class=\"hButton\" onclick=\"HAYATE.core.killMyParent(this)\">Close</button>";
+        "onclick=\"HAYATE.app.addMember_(this.parentNode)\">Add</button>" +
+        "<img src=\"/static/close.gif\" onclick=\"HAYATE.core.killMyParent(this)\" style=\"float: right;\"/>";
+        //"<button class=\"hButton\" onclick=\"HAYATE.core.killMyParent(this)\">Close</button>";
+
     parent.appendChild(divElement);
-};
-
-HAYATE.app.populateUsersInRoom = function (users)
-{
-    var usersOnline = document.getElementById('users_online');
-    var usersOffline = document.getElementById('users_offline');
-
-    for(var i = 0; i < users.length; i++)
-    {
-        var u = users[i];
-        var user = document.getElementById(u.id);
-
-        if(user && user !== undefined)
-        {
-            // user info already populated
-            // look for status change
-            if(user.parentNode.id === 'users_online' && u.status === "online")
-                continue;
-            if(user.parentNode.id === 'users_offline' && u.status === "offline")
-                continue;
-
-            HAYATE.core.killMe(user);
-        }
-
-        // populate user info
-        var aUser = document.createElement('div');
-        aUser.className = 'auser';
-        aUser.id = users[i].id;
-        aUser.innerHTML = users[i].nickname;
-
-        if(users[i].status === 'online')
-        {
-            usersOnline.appendChild(aUser);
-        }
-        else
-        {
-            usersOffline.appendChild(aUser);
-        }
-    }
-    
-    return true;
-};
-
-HAYATE.app.getUsers = function (event)
-{
-    var httpreq = HAYATE.core.getXMLHttpRequest();
-    if(!httpreq)
-        return;
-
-    httpreq.open("GET", "/users");
-
-    httpreq.onreadystatechange = function()
-    {
-        // nothing to do
-    };
-    
-    httpreq.send();    
 };
 
 /**
@@ -255,7 +208,7 @@ HAYATE.app.chat.initialize = function()
 HAYATE.app.chat.onOpen = function ()
 {
     setTimeout(HAYATE.app.chat.getMessages, 2000);
-    setTimeout(HAYATE.app.getUsers, 2000);
+    setTimeout(HAYATE.app.users.getUsers, 2000);
 };
 
 HAYATE.app.chat.getMessages = function ()
@@ -289,7 +242,7 @@ HAYATE.app.chat.onMessage = function (update)
         }
         else if(updates.users != undefined)
         {
-            HAYATE.app.populateUsersInRoom(updates.users)
+            HAYATE.app.users.populateUsersInRoom(updates.users)
         }
     }
     catch(e)
@@ -587,4 +540,240 @@ HAYATE.util.logoutSession = function (event)
         // nothing to do
     };
     httpreq.send();    
+};
+
+HAYATE.util.closeButton = function ()
+{
+    var closeContr = document.createElement('img');
+    closeContr.src = '/static/close.gif';
+    closeContr.onclick = function (event) { event.currentTarget.parentNode.remove(); event.stopPropagation(); };
+    closeContr.style.float = 'right';
+    return closeContr;
+};
+
+HAYATE.app.users.populateUsersInRoom = function (users)
+{
+    var usersOnline = document.getElementById('users_online');
+    var usersOffline = document.getElementById('users_offline');
+
+    for(var i = 0; i < users.length; i++)
+    {
+        var u = users[i];
+        var user = document.getElementById(u.id);
+
+        if(user && user !== undefined)
+        {
+            // user info already populated
+            // look for status change
+            if(user.parentNode.id === 'users_online' && u.status === "online")
+                continue;
+            if(user.parentNode.id === 'users_offline' && u.status === "offline")
+                continue;
+
+            HAYATE.core.killMe(user);
+        }
+
+        // populate user info
+        var aUser = document.createElement('div');
+        aUser.className = 'auser amenuitem';
+        aUser.id = users[i].id;
+        aUser.innerHTML = users[i].nickname;
+        aUser.style.cursor = 'pointer';
+        aUser.onclick = HAYATE.app.users.handleClick;
+        aUser.title = 'Click to see menu';
+        aUser.setAttribute('nickname', users[i].nickname);
+
+        if(users[i].status === 'online')
+        {
+            usersOnline.appendChild(aUser);
+        }
+        else
+        {
+            usersOffline.appendChild(aUser);
+        }
+    }
+    
+    return true;
+};
+
+HAYATE.app.users.getUsers = function (event)
+{
+    var httpreq = HAYATE.core.getXMLHttpRequest();
+    if(!httpreq)
+        return;
+
+    httpreq.open("GET", "/users");
+
+    httpreq.onreadystatechange = function()
+    {
+        // nothing to do
+    };
+    
+    httpreq.send();    
+};
+
+HAYATE.app.users.handleClick = function (event)
+{
+    if(!document.getElementById('user_menu'))
+    {
+        var elt = event.currentTarget;
+        // right click on user... display the menu
+        var userMenuContr = document.createElement('div');
+        userMenuContr.id = 'user_menu';
+        userMenuContr.className = 'flyout';
+        userMenuContr.style.width = '150px';
+        userMenuContr.style.backgroundColor = 'white';
+
+        userMenuContr.appendChild(HAYATE.util.closeButton());
+
+        var menu1 = document.createElement('div');
+        menu1.innerText = 'Assign a Task';
+        menu1.style.borderBottom = '1px gray solid';
+        menu1.className = 'amenuitem';
+        menu1.onclick = HAYATE.app.tasks.assignTask;
+        userMenuContr.appendChild(menu1);
+
+        var menu2 = document.createElement('div');
+        menu2.innerText = 'View Profile';
+        menu2.className = 'amenuitem';
+        userMenuContr.appendChild(menu2);
+        
+        elt.appendChild(userMenuContr);
+    }
+};
+
+/**
+ * creates a overlay window to get the user input for actionitem
+ * using submit_callback as onclick callback.
+ * title - this is the title of the overlay window verbatim
+ */
+HAYATE.app.tasks.newActionItemWin = function (title_string, for_user, submit_callback)
+{
+    if(!document.getElementById('new_action_item_container'))
+    {
+        var newActionItemContr = document.createElement('div');
+        newActionItemContr.id = 'new_action_item_container';
+        newActionItemContr.className = 'flyout';
+        newActionItemContr.style.height = '220px';
+        newActionItemContr.style.width = '300px';
+        newActionItemContr.style.backgroundColor = 'white';
+
+        newActionItemContr.setAttribute('for_user', for_user);
+
+        newActionItemContr.appendChild(HAYATE.util.closeButton());
+
+        var title = document.createElement('h5');
+        title.innerText = title_string;
+        title.style.borderBottom = '1px gray solid';
+        title.style.paddingBottom = '3px';
+
+        var subjectText = document.createElement('div');
+        subjectText.innerText = 'Subject: ';
+        
+        var subject = document.createElement('input');
+        subject.name = 'subject';
+        subject.type = 'text';
+        subject.autofocus = true;
+        subject.id = 'new_action_item_subject';
+
+        var actionText = document.createElement('div');
+        actionText.innerText = 'Action: ';
+
+        var action = document.createElement('textarea');
+        action.name = 'action';
+        action.style.width = '294px';
+        action.style.height = '100px';
+        action.style.border = '1px gray solid';
+        action.id = 'new_action_item_action';
+
+        var submitButton = document.createElement('input')
+        submitButton.type = 'button';
+        submitButton.className = 'hButton';
+        submitButton.setAttribute('value', 'Submit');
+        submitButton.onclick = submit_callback;
+
+        newActionItemContr.appendChild(title);
+        newActionItemContr.appendChild(subjectText);
+        newActionItemContr.appendChild(subject);
+        newActionItemContr.appendChild(actionText);
+        newActionItemContr.appendChild(action);
+        newActionItemContr.appendChild(submitButton);
+
+        document.getElementById('tasks_area').insertBefore(newActionItemContr, document.getElementById('task_todo_container'));
+    }
+    else
+    {
+        return true;
+    }
+};
+
+HAYATE.app.tasks.newTodo = function()
+{
+    HAYATE.app.tasks.newActionItemWin('New Todo', '', HAYATE.app.tasks.createNewTodo);
+    return true;
+};
+
+/**
+ * take the parent of parent Node to get the user to whom we should assign a task
+ */
+HAYATE.app.tasks.assignTask = function (event)
+{
+    HAYATE.app.gotoTasksView();
+    var userNode = event.currentTarget.parentNode.parentNode;
+    var title = 'New task for ' + userNode.getAttribute('nickname');
+    var for_user = userNode.id;
+    document.getElementById('user_menu').remove();
+    HAYATE.app.tasks.newActionItemWin(title, for_user, HAYATE.app.tasks.createNewTask);
+    event.stopPropagation();
+    return true;
+};
+
+/**
+ * posts a new action item to the DB
+ * todo/task is designated by appropriate url
+ */
+HAYATE.app.tasks.createNewActionItem = function (url)
+{
+    var subject = document.getElementById('new_action_item_subject').value;
+    var action = document.getElementById('new_action_item_action').value;
+    var for_user = document.getElementById('new_action_item_container').getAttribute('for_user');
+
+    if(subject === "")
+        return true;
+
+    var httpreq = HAYATE.core.getXMLHttpRequest();
+    if(!httpreq)
+    {
+        return;
+    }
+    
+    httpreq.open("POST", url);
+    // django CSRF
+    var cookie = document.cookie;
+    httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));
+    
+    httpreq.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+    httpreq.onreadystatechange = function()
+    {
+        // nothing to do
+    };
+
+    // clean up user input before posting
+    document.getElementById('new_action_item_subject').value = '';
+    document.getElementById('new_action_item_action').value = '';
+    httpreq.send("subject="+subject+'&action='+action+'&for_user='+for_user);
+    return true;
+};
+
+HAYATE.app.tasks.createNewTodo = function (event)
+{
+    HAYATE.app.tasks.createNewActionItem('/tasks/todo/create');
+    return true;
+};
+
+HAYATE.app.tasks.createNewTask = function ()
+{
+    HAYATE.app.tasks.createNewActionItem('/tasks/create');
+    return true;
 };

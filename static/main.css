@@ -1,7 +1,7 @@
 body
 {
     font-family: Verdana, Geneva, sans-serif;
-    font-size: 14px;
+    font-size: 12px;
     color: #020252;
     background: url("background.png") repeat scroll transparent;
 }
@@ -11,6 +11,13 @@ p,a,h1,h2,h3,h4,h5,h6
     text-decoration: none;
     margin: 0px;
     text-align: center;
+}
+textarea
+{
+    font: inherit;
+    overflow: hidden;
+    resize: none;
+    display: inline;    
 }
 #body_contents
 {
@@ -25,17 +32,20 @@ p,a,h1,h2,h3,h4,h5,h6
 #detail { position: absolute; }
 #main_menu
 {
-    position: relative; height: 20px; border-radius: 5px 5px 0 0; background-color: #D0D0DD;
+    position: relative; height: 17px; border-radius: 5px 5px 0 0; background-color: #D0D0DD;
     border-bottom: 2px #A599FF solid;
 }
 #left_area { position: relative; float: left; width: 600px; }
 #right_area
 {
-    position: relative; width: 196px; float: right; border: gray solid;
-    border-radius: 3px; 
-    border-width: 2px;
+    position: relative; width: 196px; float: right;
+    box-shadow: 1px 1px 1px;    
 }
-#room_feed { width: 500px; background: white; width: 600px; height: 300px; overflow: auto; }
+#room_feed
+{
+    width: 500px; background: white; width: 600px; height: 300px; overflow: auto;
+    box-shadow: 2px 2px 2px;
+}
 #footer { bottom: 0px; position: absolute; text-align: center; width: 100%; }
 #login_form { position: absolute; left: 20%; }
 #logout_link
@@ -45,16 +55,19 @@ p,a,h1,h2,h3,h4,h5,h6
 }
 #chatinput
 {
-    font: inherit;
     width: 300px;
-    overflow: hidden;
-    resize: none;
-    display: inline;
     height: 40px;
 }
 #tasks_area
 {
     height: 300px;
+    text-align: left;
+}
+#tasks_menu
+{
+    border-bottom: 1px #020252 solid;
+    padding-top: 2px;
+    padding-bottom: 2px;
 }
 .heading { text-align: center; }
 .main_menu_selected { background-color: #A599FF; border-radius: 5px 5px 0 0; height: 25px; padding: 0 5px 3px 5px; }
@@ -90,4 +103,21 @@ p,a,h1,h2,h3,h4,h5,h6
 {
     border-top: 1px rgb(0, 2, 34) solid;
     padding: 2px;
+}
+.amenuitem:hover
+{
+    background-color: lightblue;
+}
+.flyout
+{
+    position: absolute;
+    z-index: 99;
+    border: 1px gray solid;
+    box-shadow: 2px 2px 2px;
+}
+.users_list
+{
+    border: 1px gray solid;
+    border-radius: 1px; 
+    border-width: 1px;
 }
