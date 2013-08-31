@@ -182,10 +182,8 @@ HAYATE.app.addMember = function (element)
     formElement.style.display = "inline";
     divElement.innerHTML = "Email of a Hayate Member: <input type=\"email\" name=\"email\" id=\"add_member_email\"/>" +
         "<button class=\"hButton\" " +
-        "onclick=\"HAYATE.app.addMember_(this.parentNode)\">Add</button>" +
-        "<img src=\"/static/close.gif\" onclick=\"HAYATE.core.killMyParent(this)\" style=\"float: right;\"/>";
-        //"<button class=\"hButton\" onclick=\"HAYATE.core.killMyParent(this)\">Close</button>";
-
+        "onclick=\"HAYATE.app.addMember_(this.parentNode)\">Add</button>";
+    divElement.appendChild(HAYATE.util.closeButton());
     parent.appendChild(divElement);
 };
 
@@ -218,6 +216,7 @@ HAYATE.app.chat.onOpen = function ()
 {
     setTimeout(HAYATE.app.chat.getMessages, 2000);
     setTimeout(HAYATE.app.users.getUsers, 2000);
+    setTimeout(HAYATE.app.tasks.getTasks, 2000);
 };
 
 HAYATE.app.chat.getMessages = function ()
@@ -253,6 +252,10 @@ HAYATE.app.chat.onMessage = function (update)
         {
             HAYATE.app.users.populateUsersInRoom(updates.users)
         }
+        else if(updates.tasks !== undefined)
+        {
+            HAYATE.app.tasks.populateTasksInRoom(updates.tasks, updates.todos)
+        }
     }
     catch(e)
     {
@@ -277,7 +280,11 @@ HAYATE.app.chat.populateMessagesInRoom = function (messages, replies)
 
     for(var i=0; i < messages.length; i++)
     {
-        var aMessage = HAYATE.app.chat.util.createMessage(messages[i], 'amessage');
+        var expCmpButton = HAYATE.util.plusButton(HAYATE.app.chat.expandConversation);
+        expCmpButton.id = 'expcmp-'+messages[i].id;
+        var aMessage = HAYATE.app.chat.util.createMessage(messages[i], 'amessage',
+                                                          [expCmpButton]);
+        var msgReplies = document.createElement('div');
 
         //console.log(aMessage.outerHTML);
 
@@ -286,6 +293,13 @@ HAYATE.app.chat.populateMessagesInRoom = function (messages, replies)
         aConversation.appendChild(aMessage);
         aConversation.id = messages[i].id;
         aConversation.onclick = HAYATE.app.chat.selectConversation;
+
+        // every conversation tracks message replies in element identified
+        // by md-<conversation_id> set in the message header
+        aMessage.setAttribute('replies_id', 'md-'+messages[i].id);
+        aMessage.setAttribute('expcmp_id', 'expcmp-'+messages[i].id);
+
+        msgReplies.id = 'md-'+messages[i].id;
 
         // compose all the replies and append to conversation
         if(replies !== undefined)
@@ -296,15 +310,26 @@ HAYATE.app.chat.populateMessagesInRoom = function (messages, replies)
                 for(var j=0; j < replyMessages.length; j++ )
                 {
                     var aReply = HAYATE.app.chat.util.createMessage(replyMessages[j], 'areply');
-                    aConversation.appendChild(aReply);
+                    msgReplies.appendChild(aReply);
                 }
             }
         }
+        msgReplies.style.display = 'none';
+        aConversation.appendChild(msgReplies);
+
+        // don't display the expand button when no replies in room
+        if(msgReplies.children.length === 0)
+            expCmpButton.style.display = 'none';
+
         document.getElementById('room_feed').appendChild(aConversation);
     }
 };
 
-HAYATE.app.chat.util.createMessage = function (message, className)
+/**
+ * if children is not undefined, it will be treated as array of elements
+ * and they will be added to message before any other element
+ */
+HAYATE.app.chat.util.createMessage = function (message, className, children)
 {
     var aMessage = document.createElement('div');
     aMessage.className = className;
@@ -325,6 +350,14 @@ HAYATE.app.chat.util.createMessage = function (message, className)
     msg.style.paddingTop = '2px';
     msg.innerHTML = message.message;
 
+    if(children !== undefined)
+    {
+        for(var i=0; i < children.length; i++)
+        {
+            aMessage.appendChild(children[i]);
+        }
+    }
+    
     aMessage.appendChild(userCntr);
     aMessage.appendChild(dateTime);
     aMessage.appendChild(msg);
@@ -336,16 +369,20 @@ HAYATE.app.chat.populateReplyInRoom = function (replies)
 {
     for(var conv_id in replies)
     {
-        var aConversation = document.getElementById(conv_id);
+        var msgReplies = document.getElementById('md-'+conv_id);
         var replyMessages = replies[conv_id];
         if(replyMessages !== undefined)
         {
             for(var j=0; j < replyMessages.length; j++ )
             {
                 var aReply = HAYATE.app.chat.util.createMessage(replyMessages[j], 'areply');
-                aConversation.appendChild(aReply);
+                msgReplies.appendChild(aReply);
             }
         }
+
+        // also show the expand button to the user
+        var expCmpButton = document.getElementById('expcmp-'+conv_id);
+        expCmpButton.style.display = 'inline';
     }
 
     return true;
@@ -394,8 +431,6 @@ HAYATE.app.chat.sendMessage = function ()
 
 HAYATE.app.chat.selectConversation = function (event)
 {
-    console.log(event.currentTarget.outerHTML);
-
     var currTarget = event.currentTarget;
     var ci = document.getElementById('chatinput');
 
@@ -466,6 +501,28 @@ HAYATE.app.chat.startNewConversation = function (event)
     // clean up user input before posting
     document.getElementById('chatinput').value = '';
     httpreq.send("message="+message);
+};
+
+HAYATE.app.chat.expandConversation = function (event)
+{
+    var aMessage = event.target.parentNode;
+    var msgReplies = document.getElementById(aMessage.getAttribute('replies_id'));
+    msgReplies.style.display = 'block';
+    var expCmpButton = document.getElementById(aMessage.getAttribute('expcmp_id'));
+    expCmpButton.src = '/static/minus.gif';
+    expCmpButton.onclick = HAYATE.app.chat.collapseConversation;
+    return true;
+};
+
+HAYATE.app.chat.collapseConversation = function (event)
+{
+    var aMessage = event.target.parentNode;
+    var msgReplies = document.getElementById(aMessage.getAttribute('replies_id'));
+    msgReplies.style.display = 'none';
+    var expCmpButton = document.getElementById(aMessage.getAttribute('expcmp_id'));
+    expCmpButton.src = '/static/plus.gif';
+    expCmpButton.onclick = HAYATE.app.chat.expandConversation;
+    return true;    
 };
 
 /**
@@ -557,7 +614,72 @@ HAYATE.util.closeButton = function ()
     closeContr.src = '/static/close.gif';
     closeContr.onclick = function (event) { event.currentTarget.parentNode.remove(); event.stopPropagation(); };
     closeContr.style.float = 'right';
+    closeContr.style.cursor = 'pointer';
     return closeContr;
+};
+
+/**
+ * pass in the function to be called when this button is pressed
+ */
+HAYATE.util.plusButton = function (callback)
+{
+    var plusContr = document.createElement('img');
+    plusContr.src = '/static/plus.gif';
+    plusContr.onclick = callback;
+    plusContr.style.cursor = 'pointer';
+    plusContr.style.padding = '2px';
+    plusContr.style.verticalAlign = 'middle';
+    return plusContr;
+};
+
+/**
+ * pass in the function to be called when this button is pressed
+ */
+HAYATE.util.minusButton = function (callback)
+{
+    var minusContr = document.createElement('img');
+    minusContr.src = '/static/minus.gif';
+    minusContr.onclick = callback;
+    minusContr.style.cursor = 'pointer';
+    minusContr.style.padding = '2px';
+    minusContr.style.verticalAlign = 'middle';    
+    return minusContr;
+};
+
+HAYATE.util.upArrow = function (callback)
+{
+    var upArrowContr = document.createElement('img');
+    upArrowContr.src = '/static/up.gif';
+    upArrowContr.onclick = callback;
+    upArrowContr.style.cursor = 'pointer';
+    upArrowContr.style.padding = '2px';
+    upArrowContr.style.verticalAlign = 'middle';    
+    return upArrowContr;
+};
+
+HAYATE.util.downArrow = function (callback)
+{
+    var downArrowContr = document.createElement('img');
+    downArrowContr.src = '/static/down.gif';
+    downArrowContr.onclick = callback;
+    downArrowContr.style.cursor = 'pointer';
+    downArrowContr.style.padding = '2px';
+    downArrowContr.style.verticalAlign = 'middle';    
+    return downArrowContr;
+};
+
+/**
+ * look for element with class 'nothing' in the children of the passed in
+ * element and kill it
+ */
+HAYATE.util.killNothingChild = function (element)
+{
+    var children = element.childNodes;
+    for(var i=0; i < children.length; i++)
+    {
+        if(children[i].className === 'nothing')
+            HAYATE.core.killMe(children[i]);
+    }
 };
 
 HAYATE.app.users.populateUsersInRoom = function (users)
@@ -795,4 +917,167 @@ HAYATE.app.tasks.createNewTask = function ()
 {
     HAYATE.app.tasks.createNewActionItem('/tasks/create');
     return true;
+};
+
+HAYATE.app.tasks.createTaskForDisplay = function (task)
+{
+    var taskElement = document.createElement('div');
+    taskElement.className = 'atask';
+
+    var taskHeader = document.createElement('div');
+    taskHeader.className = 'taskheader';
+    taskHeader.verticalAlign = 'middle';
+
+    // following ids are used later when we need to expand/compress
+    // details pertaining to this task
+    taskHeader.setAttribute('detail_id', 'td-'+task.id);
+    taskHeader.setAttribute('expcmp_id', 'expcmp-'+task.id);
+
+    var subjectElement = document.createElement('div');
+    subjectElement.style.display = 'inline';
+    subjectElement.innerHTML = task.subject;
+    
+    var dateTime = document.createElement('div');
+    dateTime.innerHTML = '[' + task.timestamp + ']';
+    dateTime.style.display = 'inline';
+    dateTime.style.float = 'right';
+    dateTime.style.fontSize = '9px';
+    dateTime.style.fontWeight = 'normal';
+
+    var statusElement = document.createElement('div');
+    statusElement.innerHTML = '[' + task.status + ']';
+    statusElement.style.display = 'inline';
+
+    // container for showing the action item followed by
+    // history of the task
+    var taskDetails = document.createElement('div');
+    taskDetails.innerHTML = task.action;
+    taskDetails.id = 'td-'+task.id;
+    taskDetails.className = 'taskdetail';
+
+    // expand compress button i.e. plus/minus
+    var expCmpButton = HAYATE.util.plusButton(HAYATE.app.tasks.expandTask);
+    expCmpButton.id = 'expcmp-'+task.id;
+    expCmpButton.title = 'Expand';
+
+    // buttons to increase/decrease priority
+    var incrPriorityButton = HAYATE.util.upArrow(HAYATE.app.tasks.increasePriority);
+    incrPriorityButton.title = 'Increase priority';
+
+    var decrPriorityButton = HAYATE.util.downArrow(HAYATE.app.tasks.decreasePriority);
+    decrPriorityButton.title = 'Decrease priority';
+    
+    taskHeader.appendChild(expCmpButton);
+    taskHeader.appendChild(statusElement);
+    taskHeader.appendChild(subjectElement);
+    taskHeader.appendChild(incrPriorityButton);
+    taskHeader.appendChild(decrPriorityButton);
+    taskHeader.appendChild(dateTime);
+    taskElement.appendChild(taskHeader);
+    taskElement.appendChild(taskDetails);
+
+    // done
+    return taskElement;
+};
+
+HAYATE.app.tasks.expandTask = function (event)
+{
+    // task header node is the parent of the target of this event
+    // and it has the id of the detail node to be displayed
+    var taskElement = event.target.parentNode;
+    var taskDetails = document.getElementById(taskElement.getAttribute('detail_id'));
+    taskDetails.style.display = 'block';
+    var expCmpButton = document.getElementById(taskElement.getAttribute('expcmp_id'));
+    expCmpButton.src = '/static/minus.gif';
+    expCmpButton.onclick = HAYATE.app.tasks.compressTask;
+    expCmpButton.title = 'Collapse';
+    return true;
+};
+
+HAYATE.app.tasks.compressTask = function (event)
+{
+    // task header node is the parent of the target of this event
+    // and it has the id of the detail node to be displayed
+    var taskElement = event.target.parentNode;
+    var taskDetails = document.getElementById(taskElement.getAttribute('detail_id'));
+    taskDetails.style.display = 'none';
+    var expCmpButton = document.getElementById(taskElement.getAttribute('expcmp_id'));
+    expCmpButton.src = '/static/plus.gif';
+    expCmpButton.onclick = HAYATE.app.tasks.expandTask;
+    expCmpButton.title = 'Expand';
+    return true;
+};
+
+HAYATE.app.tasks.increasePriority = function ()
+{
+    return true;
+};
+
+HAYATE.app.tasks.populateTasksInRoom = function (tasks, todos)
+{
+    tasks = tasks.concat(todos);
+    for(var i = 0; i < tasks.length; i++)
+    {
+        var task = tasks[i];
+        var taskElement = HAYATE.app.tasks.createTaskForDisplay(task);
+        //console.log(taskElement);
+
+        switch(task.priority)
+        {
+            case '1':
+            {
+                var p1s = document.getElementById('p1_actionitems');
+                HAYATE.util.killNothingChild(p1s);
+                p1s.appendChild(taskElement);
+                break;
+            }
+            case '2':
+            {
+                document.getElementById('p2_actionitems').appendChild(taskElement);
+                break;
+            }
+            case '3':
+            {
+                var p3s = document.getElementById('p3_actionitems');
+                if(p3s.getAttribute('nothing') === '1')
+                {
+                    HAYATE.util.killNothingChild(p3s);
+                    p3s.removeAttribute('nothing');
+                }
+                p3s.appendChild(taskElement);
+                break;
+            }
+            case '4':
+            {
+                document.getElementById('p4_actionitems').appendChild(taskElement);
+                break;
+            }
+            case '5':
+            {
+                document.getElementById('p5_actionitems').appendChild(taskElement);
+                break;
+            }
+            default:
+            {
+                document.getElementById('p3_actionitems').appendChild(taskElement);
+                break;
+            }
+        }
+    }
+};
+
+HAYATE.app.tasks.getTasks = function ()
+{
+    var httpreq = HAYATE.core.getXMLHttpRequest();
+    if(!httpreq)
+        return;
+
+    httpreq.open("GET", "/tasks");
+
+    httpreq.onreadystatechange = function()
+    {
+        // nothing to do
+    };
+    
+    httpreq.send();
 };

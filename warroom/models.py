@@ -48,10 +48,6 @@ class ReplyMessage(Message):
         q = q.order(cls.timestamp)
         return q.iter()
 
-# child class of Message representing an update on a task    
-class TaskUpdate(Message):
-    pass
-
 class ActionItem(ndb.Model):
     timestamp = ndb.DateTimeProperty(auto_now_add=True)
     subject = ndb.StringProperty()
@@ -60,11 +56,24 @@ class ActionItem(ndb.Model):
     owner = ndb.KeyProperty(kind=User) # who owns this currently
     priority = ndb.IntegerProperty(choices=[1, 2, 3, 4, 5], default=3)
 
+    @classmethod
+    def get_all_for_user(cls, room_key, user_key):
+        q = cls.query(ancestor=room_key)
+        q = q.filter(cls.owner == user_key)
+        return q.iter()
+
+
+# child class of Message representing an update on a task/todo
+# this is a descendent of Task/Todo
+class ActionItemUpdate(Message):
+    pass
+
 # models a task in hayate
 class Task(ActionItem):
     creator = ndb.KeyProperty(kind=User) # who created this task
 
-# models a Todo otherwise, self assigned task for a user
+    
+# models a Todo otherwise aka self assigned task for a user
 class Todo(ActionItem):
     pass
 

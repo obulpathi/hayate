@@ -77,6 +77,32 @@ def get_user_json(u, status="online"):
     msg = msg.replace("'", "\'")
     return json.loads(msg, strict=False)
 
+def get_action_item_json(a):
+    """ takes a models.ActionItem (Task/Todo in real time) and returns
+    JSON representation for the same
+    """
+    _msgformat = '''{
+    "owner": "%s",
+    "timestamp": "%s",
+    "subject": "%s",
+    "action": "%s",
+    "status": "%s",
+    "priority": "%s",
+    "creator": "%s",
+    "id": "%s"
+    }'''
+
+    creator = getattr(a, 'creator', None)
+    owner = a.owner.get().nickname
+    if creator is None: creator = owner # for todos
+    else: creator = creator.get().nickname # task
+
+    msg = _msgformat % (owner, str(a.timestamp.strftime('%Y/%m/%d %H:%M:%S')),
+                        a.subject, a.action, a.status, a.priority, creator, a.key.id())
+    msg = msg.replace("'", "\'")
+
+    return json.loads(msg, strict=False)
+
 def encode_password(p):
     """ takes a password plain text and encodes it as per hayate's password
     handling policy
@@ -205,6 +231,7 @@ def rooms(request):
             return HttpResponseRedirect('/rooms?e=no_room')
 
         r_key = ndb.Key('Room', int(r_id), parent=globalKey())
+    
         s.room = r_key
         s.put()
         return HttpResponseRedirect('/')
@@ -410,6 +437,7 @@ def add_message(request):
 
     return HttpTextResponse('', 200)
 
+@login_required
 def users(request):
     # send {users: ...} update in the requesting channel
     if request.method == 'GET':
@@ -482,6 +510,31 @@ def create_task(request):
     except Exception as e:
         logging.error(str(e))
         
+@login_required
+def tasks(request):
+    """ serves /tasks and returns JSON of all the tasks and todos for
+    the requesting user in the current room
+    """
+    if request.method == 'GET':
+        try:
+            s = get_session(request)
+            tasks = []
+            for t in models.Task.get_all_for_user(s.room, s.user):
+                tasks.append(get_action_item_json(t))
+
+            todos = []
+            for t in models.Todo.get_all_for_user(s.room, s.user):
+                todos.append(get_action_item_json(t))
+
+            updates = {"tasks": tasks, "todos": todos}
+            send_updates(s.sessionid, updates)
+            return HttpTextResponse('', 200)
+        except Exception as e:
+            logging.error(str(e))
+            return HttpTextResponse('Internal server error', 500)
+    else:
+        return HttpTextResponse('Only GET is supported in this endpoint', 200)
+    
 # following requests come from google's channel JS API.
 # so, they won't have any CSRF information and hence the exempt
 @csrf_exempt    
@@ -509,7 +562,9 @@ def channel_disconnect(request):
         logging.info(s.user.get().username+' disconnected from room '+s.room.get().projectid)
         u = s.user.get()
         users = []
-        updates = {"users": users.append(get_user_json(u, 'offline'))}
+        users.append(get_user_json(u, 'offline'))
+        updates = {"users": users}
+        logging.info(str(updates))
         update_room(s.room, updates)
         
     return HttpTextResponse('', 200)

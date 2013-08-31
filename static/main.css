@@ -69,6 +69,11 @@ textarea
     padding-top: 2px;
     padding-bottom: 2px;
 }
+#task_todo_container
+{
+    box-shadow: 2px 2px 2px;
+    background-color: white;
+}
 .heading { text-align: center; }
 .main_menu_selected { background-color: #A599FF; border-radius: 5px 5px 0 0; height: 25px; padding: 0 5px 3px 5px; }
 .main_menu_item { padding: 0 5px 3px 5px; }
@@ -120,4 +125,43 @@ textarea
     border: 1px gray solid;
     border-radius: 1px; 
     border-width: 1px;
+}
+
+.atask
+{
+    background-color: #E9EAEB;
+    font-size: 10px;
+    margin-top: 3px;
+    margin-bottom: 3px;
+}
+
+.taskheader
+{
+    margin: 2px;
+    font-weight: bold;
+}
+.taskdetail
+{
+    display: none;
+    font-size: 12px;
+    border: gray 1px solid;
+}
+.alignleft
+{
+    text-align: left;
+}
+.tasksection
+{
+    margin-top: 3px;
+    margin-bottom: 3px;
+}
+.tasksectionheading
+{
+    border-bottom: rgba(71, 80, 143, 0.89) 1px solid;
+    border-top: rgba(71, 80, 143, 0.89) 1px solid;    
+}
+.nothing
+{
+    background-color: #E9EAEB;
+    text-align: center;
 }
