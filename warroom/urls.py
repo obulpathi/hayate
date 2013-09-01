@@ -15,6 +15,7 @@ urlpatterns = patterns(
     url(r'users/?$', 'users'),
     url(r'tasks/create/?$', 'create_task'),
     url(r'tasks/todo/create/?$', 'create_todo'),
+    url(r'tasks/respond/?$', 'respond_task'),
     url(r'tasks/?$', 'tasks'),
     url(r'^/?$', 'index'),
     )

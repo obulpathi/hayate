@@ -89,7 +89,8 @@ def get_action_item_json(a):
     "status": "%s",
     "priority": "%s",
     "creator": "%s",
-    "id": "%s"
+    "id": "%s",
+    "type": "%s"
     }'''
 
     creator = getattr(a, 'creator', None)
@@ -97,8 +98,13 @@ def get_action_item_json(a):
     if creator is None: creator = owner # for todos
     else: creator = creator.get().nickname # task
 
+    type_ = 'task'
+    if isinstance(a, models.Todo):
+        type_ = 'todo'
+
     msg = _msgformat % (owner, str(a.timestamp.strftime('%Y/%m/%d %H:%M:%S')),
-                        a.subject, a.action, a.status, a.priority, creator, a.key.id())
+                        a.subject, a.action, a.status, a.priority, creator,
+                        a.key.id(), type_)
     msg = msg.replace("'", "\'")
 
     return json.loads(msg, strict=False)
@@ -221,6 +227,21 @@ def rooms(request):
         if rooms is not None:
             for r in rooms:
                 room_list.append({'id': r.key.id(), 'projectid': r.projectid})
+
+        # also get the user out of his current room, ofcourse after notifying others
+        if s.room is not None:
+
+            # tell others in the room that this user is out of room
+            u = s.user.get()
+            users = []
+            users.append(get_user_json(u, 'offline'))
+            updates = {"users": users}
+            update_room(s.room, updates)
+            
+            # now get the user out
+            s.room = None
+            s.put()
+        
         return render(request, 'rooms.html', {'member': u.nickname,
                                               'rooms': room_list,
                                               'error': error})
@@ -479,6 +500,13 @@ def create_todo(request):
 
         todo.put()
 
+        # update the session
+        todos = []
+        todos.append(get_action_item_json(todo))
+        updates = {"todos": todos}
+        for _s in models.HSession.get_sessions_for_user_room(s.user, s.room):
+            send_updates(_s.sessionid, updates)        
+
         return HttpTextResponse('', 200)
     except Exception as e:
         logging.error(str(e))
@@ -506,6 +534,13 @@ def create_task(request):
 
         task.put()
 
+        # update the session
+        tasks = []
+        tasks.append(get_action_item_json(task))
+        updates = {"tasks": tasks}
+        for _s in models.HSession.get_sessions_for_user_room(owner.key, s.room):
+            send_updates(_s.sessionid, updates)        
+
         return HttpTextResponse('', 200)
     except Exception as e:
         logging.error(str(e))
@@ -528,12 +563,86 @@ def tasks(request):
 
             updates = {"tasks": tasks, "todos": todos}
             send_updates(s.sessionid, updates)
+
+            # all done
             return HttpTextResponse('', 200)
         except Exception as e:
             logging.error(str(e))
             return HttpTextResponse('Internal server error', 500)
     else:
         return HttpTextResponse('Only GET is supported in this endpoint', 200)
+
+@login_required
+@post_required
+def respond_task(request):
+    """ takes a response from user on a task and creates a ActionItemUpdate
+    entity with the task as the parent
+    """
+    task_id = request.POST.get('task_id', None)
+    message = request.POST.get('message', None)
+
+    if task_id is None or message is None:
+        return HttpTextResponse('No inputs to process', 400)
+
+    try:
+        s = get_session(request)
+        t_key = ndb.Key('Task', int(task_id), parent=s.room)
+
+        # re-assign the task to the creator
+        t = t_key.get()
+        t.owner = t.creator
+        t.creator = s.user
+        t.put()
+
+        m = models.ActionItemUpdate(parent=t_key)
+        m.user = s.user
+        m.message = message
+        m.put()
+
+        # update the user sessions
+        tasks = []
+        tasks.append(get_action_item_json(t))
+
+        task_updates = []
+    
+        updates = {"tasks": tasks, "task_updates": {task_id: task_updates}}
+        for _s in models.HSession.get_sessions_for_user_room(t.owner, s.room):
+            send_updates(_s.sessionid, updates)                
+
+        return HttpTextResponse('', 200)
+    except Exception as e:
+        logging.info(str(e))
+
+@login_required
+@post_required
+def update_todo(request):
+    """ updates a todo with the status my user
+    """
+    task_id = request.POST.get('task_id', None)
+    message = request.POST.get('message', None)
+
+    if task_id is None or message is None:
+        return HttpTextResponse('No inputs to process', 400)
+
+    try:
+        s = get_session(request)
+        t_key = ndb.Key('Todo', int(task_id), parent=s.room)
+
+        m = models.ActionItemUpdate(parent=t_key)
+        m.user = s.user
+        m.message = message
+        m.put()
+
+        # update the user sessions
+        todo_updates = []
+        
+        updates = {"todo_updates": {task_id: todo_updates}}
+        for _s in models.HSession.get_sessions_for_user_room(t.owner, s.room):
+            send_updates(_s.sessionid, updates)                
+
+        return HttpTextResponse('', 200)
+    except Exception as e:
+        logging.info(str(e))
     
 # following requests come from google's channel JS API.
 # so, they won't have any CSRF information and hence the exempt
@@ -559,13 +668,12 @@ def channel_disconnect(request):
 
     # if the session was active yet, notify the room about the logout
     if s is not None:
-        logging.info(s.user.get().username+' disconnected from room '+s.room.get().projectid)
         u = s.user.get()
         users = []
         users.append(get_user_json(u, 'offline'))
         updates = {"users": users}
-        logging.info(str(updates))
-        update_room(s.room, updates)
+        if s.room is not None:
+            update_room(s.room, updates)
         
     return HttpTextResponse('', 200)
 

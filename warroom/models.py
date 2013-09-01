@@ -66,7 +66,15 @@ class ActionItem(ndb.Model):
 # child class of Message representing an update on a task/todo
 # this is a descendent of Task/Todo
 class ActionItemUpdate(Message):
-    pass
+
+    @classmethod
+    def get_all_for_ai(cls, a_key):
+        """ takes key of an action item and returns all the updates
+        with that as the parent
+        """
+        q = cls.query(ancestor=a_key)
+        q = q.order(cls.timestamp)
+        return q.iter()
 
 # models a task in hayate
 class Task(ActionItem):
@@ -102,3 +110,11 @@ class HSession(ndb.Model):
         """
         q = cls.query(cls.sessionid == sid)
         return q.get()
+
+    @classmethod
+    def get_sessions_for_user_room(cls, user_key, room_key):
+        """ returns all the session objects for the passed in user-room combination
+        """
+        q = cls.query(cls.user == user_key)
+        q = q.filter(cls.room == room_key)
+        return q.iter()

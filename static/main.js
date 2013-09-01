@@ -252,7 +252,7 @@ HAYATE.app.chat.onMessage = function (update)
         {
             HAYATE.app.users.populateUsersInRoom(updates.users)
         }
-        else if(updates.tasks !== undefined)
+        else if(updates.tasks !== undefined || updates.todos !== undefined)
         {
             HAYATE.app.tasks.populateTasksInRoom(updates.tasks, updates.todos)
         }
@@ -511,6 +511,7 @@ HAYATE.app.chat.expandConversation = function (event)
     var expCmpButton = document.getElementById(aMessage.getAttribute('expcmp_id'));
     expCmpButton.src = '/static/minus.gif';
     expCmpButton.onclick = HAYATE.app.chat.collapseConversation;
+    event.stopPropagation();
     return true;
 };
 
@@ -522,6 +523,7 @@ HAYATE.app.chat.collapseConversation = function (event)
     var expCmpButton = document.getElementById(aMessage.getAttribute('expcmp_id'));
     expCmpButton.src = '/static/plus.gif';
     expCmpButton.onclick = HAYATE.app.chat.expandConversation;
+    event.stopPropagation();
     return true;    
 };
 
@@ -923,6 +925,7 @@ HAYATE.app.tasks.createTaskForDisplay = function (task)
 {
     var taskElement = document.createElement('div');
     taskElement.className = 'atask';
+    taskElement.id = task.id;
 
     var taskHeader = document.createElement('div');
     taskHeader.className = 'taskheader';
@@ -948,12 +951,15 @@ HAYATE.app.tasks.createTaskForDisplay = function (task)
     statusElement.innerHTML = '[' + task.status + ']';
     statusElement.style.display = 'inline';
 
-    // container for showing the action item followed by
-    // history of the task
-    var taskDetails = document.createElement('div');
-    taskDetails.innerHTML = task.action;
-    taskDetails.id = 'td-'+task.id;
-    taskDetails.className = 'taskdetail';
+    var taskCreator = document.createElement('div');
+    if(task.type === 'task')
+        taskCreator.innerHTML = 'by '+task.creator;
+    else
+        taskCreator.innerHTML = 'by You';
+    taskCreator.style.fontSize = '9px';
+    taskCreator.style.fontWeight = 'normal';
+    taskCreator.style.display = 'inline';
+    taskCreator.style.paddingLeft = '5px';
 
     // expand compress button i.e. plus/minus
     var expCmpButton = HAYATE.util.plusButton(HAYATE.app.tasks.expandTask);
@@ -966,12 +972,69 @@ HAYATE.app.tasks.createTaskForDisplay = function (task)
 
     var decrPriorityButton = HAYATE.util.downArrow(HAYATE.app.tasks.decreasePriority);
     decrPriorityButton.title = 'Decrease priority';
+
+    // container for showing the action item followed by
+    // history of the task
+    var taskDetails = document.createElement('div');
+    taskDetails.id = 'td-'+task.id;
+    taskDetails.className = 'taskdetail';
+
+    var toPerform = document.createElement('div');
+    //toPerform.style.display = 'inline';
+    toPerform.innerHTML = task.action;
+    toPerform.style.border = 'gray 1px solid';
+    toPerform.style.paddingTop = '5px';
+
+    var taskUpdates = document.createElement('div');
+    taskUpdates.style.paddingTop = '5px';
+    taskUpdates.id = 'tu-'+task.id;
+
+    var respondClose = document.createElement('div');
+    respondClose.style.paddingTop = '5px';
+
+    var response = document.createElement('textarea');
+    response.id = 'response-'+task.id;
+    response.style.border = 'gray 1px solid';
+    response.style.width = '200px';
+    response.style.height = '50px';
+    response.style.display = 'block';
     
+    var respondButton = document.createElement('a');
+    if(task.type === 'task')
+        respondButton.innerHTML = 'Respond';
+    else
+        respondButton.innerHTML = 'Update';
+    respondButton.style.fontSize = '10px';
+
+    if(task.type === 'task')
+        respondButton.href = 'javascript:HAYATE.app.tasks.respond('+task.id+')';
+    else
+        respondButton.href = 'javascript:HAYATE.app.tasks.updateTodo('+task.id+')';
+    
+    respondButton.style.textDecoration = 'underline';
+    respondButton.style.margin = '5px';
+
+    var closeButton = document.createElement('a');
+    closeButton.innerHTML = 'Close';
+    closeButton.style.fontSize = '10px';
+    closeButton.href = 'javascript:HAYATE.app.tasks.closeTask('+task.id+')';
+    closeButton.style.textDecoration = 'underline';
+    closeButton.style.margin = '5px';
+
+    respondClose.appendChild(response);
+    respondClose.appendChild(respondButton);
+    respondClose.appendChild(closeButton);
+
+    taskDetails.appendChild(toPerform);
+    taskDetails.appendChild(taskUpdates);
+    taskDetails.appendChild(respondClose);
+
     taskHeader.appendChild(expCmpButton);
     taskHeader.appendChild(statusElement);
     taskHeader.appendChild(subjectElement);
-    taskHeader.appendChild(incrPriorityButton);
-    taskHeader.appendChild(decrPriorityButton);
+    //taskHeader.appendChild(incrPriorityButton);
+    //taskHeader.appendChild(decrPriorityButton);
+    taskHeader.appendChild(taskCreator);
     taskHeader.appendChild(dateTime);
     taskElement.appendChild(taskHeader);
     taskElement.appendChild(taskDetails);
@@ -1013,56 +1076,61 @@ HAYATE.app.tasks.increasePriority = function ()
     return true;
 };
 
+HAYATE.app.tasks.decreasePriority = function ()
+{
+    return true;
+};
+
+HAYATE.app.tasks.respond = function (task_id)
+{
+    var response = document.getElementById('response-'+task_id);
+
+    if(response === null || response.value === "")
+        return;
+
+    var httpreq = HAYATE.core.getXMLHttpRequest();
+    if(!httpreq)
+    {
+        return;
+    }
+    
+    httpreq.open("POST", "/tasks/respond");
+    // django CSRF
+    var cookie = document.cookie;
+    httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));    
+    httpreq.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+    httpreq.onreadystatechange = function()
+    {
+        // nothing to do
+    };
+
+    var response = response.value;
+    response = response.chomp()
+
+    // also kill the task from current user's view as it is getting reassigned
+    HAYATE.core.killMe(document.getElementById(task_id));
+    
+    httpreq.send('task_id='+task_id+'&message='+response);
+};
+
 HAYATE.app.tasks.populateTasksInRoom = function (tasks, todos)
 {
+    if(tasks === undefined)
+        tasks = [];
+
+    if(todos === undefined)
+        todos = [];
+    
     tasks = tasks.concat(todos);
     for(var i = 0; i < tasks.length; i++)
     {
         var task = tasks[i];
         var taskElement = HAYATE.app.tasks.createTaskForDisplay(task);
-        //console.log(taskElement);
 
-        switch(task.priority)
-        {
-            case '1':
-            {
-                var p1s = document.getElementById('p1_actionitems');
-                HAYATE.util.killNothingChild(p1s);
-                p1s.appendChild(taskElement);
-                break;
-            }
-            case '2':
-            {
-                document.getElementById('p2_actionitems').appendChild(taskElement);
-                break;
-            }
-            case '3':
-            {
-                var p3s = document.getElementById('p3_actionitems');
-                if(p3s.getAttribute('nothing') === '1')
-                {
-                    HAYATE.util.killNothingChild(p3s);
-                    p3s.removeAttribute('nothing');
-                }
-                p3s.appendChild(taskElement);
-                break;
-            }
-            case '4':
-            {
-                document.getElementById('p4_actionitems').appendChild(taskElement);
-                break;
-            }
-            case '5':
-            {
-                document.getElementById('p5_actionitems').appendChild(taskElement);
-                break;
-            }
-            default:
-            {
-                document.getElementById('p3_actionitems').appendChild(taskElement);
-                break;
-            }
-        }
+        var actionItems = document.getElementById('p'+task.priority+'_actionitems');
+        HAYATE.util.killNothingChild(actionItems);
+        actionItems.appendChild(taskElement);
     }
 };
 
