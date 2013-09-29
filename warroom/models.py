@@ -68,7 +68,7 @@ class ActionItem(ndb.Model):
 class ActionItemUpdate(Message):
 
     @classmethod
-    def get_all_for_ai(cls, a_key):
+    def get_all_for_action_item(cls, a_key):
         """ takes key of an action item and returns all the updates
         with that as the parent
         """

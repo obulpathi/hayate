@@ -24,7 +24,7 @@ textarea
     width: 800px;
     margin: auto;
     position: relative;
-    min-height: 600px;
+    min-height: 800px;
 }
 #header { height: 50px; }
 #left_header { display: inline; float: left; }
@@ -60,8 +60,9 @@ textarea
 }
 #tasks_area
 {
-    height: 300px;
+    height: 400px;
     text-align: left;
+    overflow: auto;
 }
 #tasks_menu
 {
@@ -144,7 +145,8 @@ textarea
 {
     display: none;
     font-size: 12px;
-    border: gray 1px solid;
+    border-top: rgb(50, 2, 247) 1px solid;
+    border-bottom: rgb(50, 2, 247) 1px solid;
 }
 .alignleft
 {
@@ -157,8 +159,7 @@ textarea
 }
 .tasksectionheading
 {
-    border-bottom: rgba(71, 80, 143, 0.89) 1px solid;
-    border-top: rgba(71, 80, 143, 0.89) 1px solid;    
+    text-decoration: underline;
 }
 .nothing
 {

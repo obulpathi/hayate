@@ -248,13 +248,17 @@ HAYATE.app.chat.onMessage = function (update)
         {
             HAYATE.app.chat.populateReplyInRoom(updates.replies);
         }
-        else if(updates.users != undefined)
+        else if(updates.users !== undefined)
         {
             HAYATE.app.users.populateUsersInRoom(updates.users)
         }
         else if(updates.tasks !== undefined || updates.todos !== undefined)
         {
-            HAYATE.app.tasks.populateTasksInRoom(updates.tasks, updates.todos)
+            HAYATE.app.tasks.populateTasksInRoom(updates.tasks, updates.todos, updates.task_updates, updates.todo_updates)
+        }
+        else if(updates.task_updates !== undefined || updates.todo_updates)
+        {
+            HAYATE.app.tasks.updateOnActionItem(updates.task_updates, updates.todo_updates);
         }
     }
     catch(e)
@@ -967,11 +971,11 @@ HAYATE.app.tasks.createTaskForDisplay = function (task)
     expCmpButton.title = 'Expand';
 
     // buttons to increase/decrease priority
-    var incrPriorityButton = HAYATE.util.upArrow(HAYATE.app.tasks.increasePriority);
-    incrPriorityButton.title = 'Increase priority';
+    // var incrPriorityButton = HAYATE.util.upArrow(HAYATE.app.tasks.increasePriority);
+    // incrPriorityButton.title = 'Increase priority';
 
-    var decrPriorityButton = HAYATE.util.downArrow(HAYATE.app.tasks.decreasePriority);
-    decrPriorityButton.title = 'Decrease priority';
+    // var decrPriorityButton = HAYATE.util.downArrow(HAYATE.app.tasks.decreasePriority);
+    // decrPriorityButton.title = 'Decrease priority';
 
     // container for showing the action item followed by
     // history of the task
@@ -982,52 +986,63 @@ HAYATE.app.tasks.createTaskForDisplay = function (task)
     var toPerform = document.createElement('div');
     //toPerform.style.display = 'inline';
     toPerform.innerHTML = task.action;
-    toPerform.style.border = 'gray 1px solid';
+    //toPerform.style.border = 'gray 1px solid';
     toPerform.style.paddingTop = '5px';
 
     var taskUpdates = document.createElement('div');
     taskUpdates.style.paddingTop = '5px';
     taskUpdates.id = 'tu-'+task.id;
-
-    var respondClose = document.createElement('div');
-    respondClose.style.paddingTop = '5px';
-
-    var response = document.createElement('textarea');
-    response.id = 'response-'+task.id;
-    response.style.border = 'gray 1px solid';
-    response.style.width = '200px';
-    response.style.height = '50px';
-    response.style.display = 'block';
-    
-    var respondButton = document.createElement('a');
-    if(task.type === 'task')
-        respondButton.innerHTML = 'Respond';
-    else
-        respondButton.innerHTML = 'Update';
-    respondButton.style.fontSize = '10px';
-
-    if(task.type === 'task')
-        respondButton.href = 'javascript:HAYATE.app.tasks.respond('+task.id+')';
-    else
-        respondButton.href = 'javascript:HAYATE.app.tasks.updateTodo('+task.id+')';
-    
-    respondButton.style.textDecoration = 'underline';
-    respondButton.style.margin = '5px';
-
-    var closeButton = document.createElement('a');
-    closeButton.innerHTML = 'Close';
-    closeButton.style.fontSize = '10px';
-    closeButton.href = 'javascript:HAYATE.app.tasks.closeTask('+task.id+')';
-    closeButton.style.textDecoration = 'underline';
-    closeButton.style.margin = '5px';
-
-    respondClose.appendChild(response);
-    respondClose.appendChild(respondButton);
-    respondClose.appendChild(closeButton);
+    taskUpdates.style.borderBottom = '1px rgb(0, 2, 34) solid';
 
     taskDetails.appendChild(toPerform);
     taskDetails.appendChild(taskUpdates);
-    taskDetails.appendChild(respondClose);
+
+    if(task.status === '0')
+    {
+        var respondClose = document.createElement('div');
+        respondClose.style.paddingTop = '5px';
+
+        var response = document.createElement('textarea');
+        response.id = 'response-'+task.id;
+        response.style.border = 'gray 1px solid';
+        response.style.width = '200px';
+        response.style.height = '20px';
+        response.style.display = 'inline';
+        
+        var respondButton = document.createElement('a');
+        if(task.type === 'task')
+            respondButton.innerHTML = 'Respond';
+        else
+            respondButton.innerHTML = 'Update';
+        respondButton.style.fontSize = '10px';
+
+        if(task.type === 'task')
+            respondButton.href = 'javascript:HAYATE.app.tasks.respond('+task.id+')';
+        else
+            respondButton.href = 'javascript:HAYATE.app.tasks.updateTodo('+task.id+')';
+        
+        //respondButton.style.textDecoration = 'underline';
+        respondButton.style.margin = '5px';
+
+        var closeButton = document.createElement('a');
+        closeButton.innerHTML = 'Close';
+        closeButton.style.fontSize = '10px';
+        closeButton.href = 'javascript:HAYATE.app.tasks.closeTask('+task.id+')';
+        //closeButton.style.textDecoration = 'underline';
+        closeButton.style.margin = '5px';
+
+        respondClose.appendChild(response);
+        respondClose.appendChild(respondButton);
+        respondClose.appendChild(closeButton);
+        
+        taskDetails.appendChild(respondClose);
+    }
+    else
+    {
+        var closed = document.createElement('div');
+        closed.innerHTML = "Action Item Closed!";
+        taskDetails.appendChild(closed);
+    }
 
     taskHeader.appendChild(expCmpButton);
     taskHeader.appendChild(statusElement);
@@ -1086,7 +1101,10 @@ HAYATE.app.tasks.respond = function (task_id)
     var response = document.getElementById('response-'+task_id);
 
     if(response === null || response.value === "")
+    {
+        alert("Need update message to respond!");
         return;
+    }
 
     var httpreq = HAYATE.core.getXMLHttpRequest();
     if(!httpreq)
@@ -1114,7 +1132,40 @@ HAYATE.app.tasks.respond = function (task_id)
     httpreq.send('task_id='+task_id+'&message='+response);
 };
 
-HAYATE.app.tasks.populateTasksInRoom = function (tasks, todos)
+HAYATE.app.tasks.updateTodo = function (task_id)
+{
+    var response = document.getElementById('response-'+task_id);
+
+    if(response === null || response.value === "")
+    {
+        alert("Nothing to update!");
+        return;
+    }
+
+    var httpreq = HAYATE.core.getXMLHttpRequest();
+    if(!httpreq)
+    {
+        return;
+    }
+    
+    httpreq.open("POST", "/tasks/todo/update");
+    // django CSRF
+    var cookie = document.cookie;
+    httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));    
+    httpreq.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+    httpreq.onreadystatechange = function()
+    {
+        // nothing to do
+    };
+
+    var update = response.value;
+    response.value = '';
+    
+    httpreq.send('task_id='+task_id+'&message='+update);
+};
+
+HAYATE.app.tasks.populateTasksInRoom = function (tasks, todos, task_updates, todo_updates)
 {
     if(tasks === undefined)
         tasks = [];
@@ -1126,11 +1177,64 @@ HAYATE.app.tasks.populateTasksInRoom = function (tasks, todos)
     for(var i = 0; i < tasks.length; i++)
     {
         var task = tasks[i];
-        var taskElement = HAYATE.app.tasks.createTaskForDisplay(task);
+
+        var updates;
+        try
+        {
+            updates = task_updates[task.id];
+            if(updates === undefined) updates = todo_updates[task.id];
+        }
+        catch(e)
+        {}
+
+        // kill the task element if present already
+        var taskElement = document.getElementById(task.id);
+        if(taskElement)
+            taskElement.remove();
+        
+        taskElement = HAYATE.app.tasks.createTaskForDisplay(task);
 
         var actionItems = document.getElementById('p'+task.priority+'_actionitems');
         HAYATE.util.killNothingChild(actionItems);
         actionItems.appendChild(taskElement);
+        
+        // populate the updates
+        if(updates !== undefined)
+        {
+            for(var j = 0; j < updates.length; j++)
+            {
+                var anUpdate = HAYATE.app.chat.util.createMessage(updates[j], 'areply');
+                var updateElement = document.getElementById('tu-'+task.id);
+                updateElement.appendChild(anUpdate);
+            }
+        }
+    }
+};
+
+HAYATE.app.tasks.updateOnActionItem = function (task_updates, todo_updates)
+{
+    for(var task_id in task_updates)
+    {
+        var updateElement = document.getElementById('tu-'+task_id);
+        var updates = task_updates[task_id];
+        for(var j = 0; j < updates.length; j++)
+        {
+            var anUpdate = HAYATE.app.chat.util.createMessage(updates[j], 'areply');
+            var updateElement = document.getElementById('tu-'+task_id);
+            updateElement.appendChild(anUpdate);
+        }
+    }
+
+    for(var task_id in todo_updates)
+    {
+        var updateElement = document.getElementById('tu-'+task_id);
+        var updates = todo_updates[task_id];
+        for(var j = 0; j < updates.length; j++)
+        {
+            var anUpdate = HAYATE.app.chat.util.createMessage(updates[j], 'areply');
+            var updateElement = document.getElementById('tu-'+task_id);
+            updateElement.appendChild(anUpdate);
+        }        
     }
 };
 
@@ -1148,4 +1252,36 @@ HAYATE.app.tasks.getTasks = function ()
     };
     
     httpreq.send();
+};
+
+HAYATE.app.tasks.closeTask = function (task_id)
+{
+    var response = document.getElementById('response-'+task_id);
+
+    if(response === null || response.value === "")
+    {
+        alert("Need update message to close the Action Item!");
+        return;
+    }
+
+    var httpreq = HAYATE.core.getXMLHttpRequest();
+    if(!httpreq)
+    {
+        return;
+    }
+    httpreq.open("POST", "/tasks/close");
+    // django CSRF
+    var cookie = document.cookie;
+    httpreq.setRequestHeader("X-CSRFToken", cookie.substring(cookie.indexOf('csrftoken=')+'csrftoken='.length));    
+    httpreq.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+    httpreq.onreadystatechange = function()
+    {
+        // nothing to do
+    };
+
+    // kill the element.. will be redrawn as required
+    document.getElementById(task_id).remove();
+
+    httpreq.send('task_id='+task_id+'&message='+response.value);
 };

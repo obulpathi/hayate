@@ -16,6 +16,8 @@ urlpatterns = patterns(
     url(r'tasks/create/?$', 'create_task'),
     url(r'tasks/todo/create/?$', 'create_todo'),
     url(r'tasks/respond/?$', 'respond_task'),
+    url(r'tasks/todo/update/?$', 'update_todo'),
+    url(r'tasks/close/?$', 'close_task'),
     url(r'tasks/?$', 'tasks'),
     url(r'^/?$', 'index'),
     )

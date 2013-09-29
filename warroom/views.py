@@ -554,14 +554,24 @@ def tasks(request):
         try:
             s = get_session(request)
             tasks = []
+            task_updates = {}
             for t in models.Task.get_all_for_user(s.room, s.user):
                 tasks.append(get_action_item_json(t))
+                replies = []
+                for u in models.ActionItemUpdate.get_all_for_action_item(t.key):
+                    replies.append(get_message_json(u))
+                task_updates[t.key.id()] = replies
 
             todos = []
+            todo_updates = {}
             for t in models.Todo.get_all_for_user(s.room, s.user):
                 todos.append(get_action_item_json(t))
+                replies = []
+                for u in models.ActionItemUpdate.get_all_for_action_item(t.key):
+                    replies.append(get_message_json(u))
+                todo_updates[t.key.id()] = replies
 
-            updates = {"tasks": tasks, "todos": todos}
+            updates = {"tasks": tasks, "todos": todos, "task_updates": task_updates, "todo_updates": todo_updates}
             send_updates(s.sessionid, updates)
 
             # all done
@@ -604,6 +614,8 @@ def respond_task(request):
         tasks.append(get_action_item_json(t))
 
         task_updates = []
+        for u in models.ActionItemUpdate.get_all_for_action_item(t_key):
+            task_updates.append(get_message_json(u))
     
         updates = {"tasks": tasks, "task_updates": {task_id: task_updates}}
         for _s in models.HSession.get_sessions_for_user_room(t.owner, s.room):
@@ -616,7 +628,7 @@ def respond_task(request):
 @login_required
 @post_required
 def update_todo(request):
-    """ updates a todo with the status my user
+    """ updates a todo with the status by user
     """
     task_id = request.POST.get('task_id', None)
     message = request.POST.get('message', None)
@@ -628,6 +640,8 @@ def update_todo(request):
         s = get_session(request)
         t_key = ndb.Key('Todo', int(task_id), parent=s.room)
 
+        t = t_key.get()
+
         m = models.ActionItemUpdate(parent=t_key)
         m.user = s.user
         m.message = message
@@ -635,6 +649,8 @@ def update_todo(request):
 
         # update the user sessions
         todo_updates = []
+
+        todo_updates.append(get_message_json(m))
         
         updates = {"todo_updates": {task_id: todo_updates}}
         for _s in models.HSession.get_sessions_for_user_room(t.owner, s.room):
@@ -643,7 +659,68 @@ def update_todo(request):
         return HttpTextResponse('', 200)
     except Exception as e:
         logging.info(str(e))
-    
+
+@login_required
+@post_required
+def close_task(request):
+    """ closes a task with the message 
+    """
+    task_id = request.POST.get('task_id', None)
+    message = request.POST.get('message', None)
+
+    if task_id is None or message is None:
+        return HttpTextResponse('No inputs to process', 400)
+
+    try:
+        s = get_session(request)
+        t_key = ndb.Key('Task', int(task_id), parent=s.room)
+
+        t = t_key.get()
+
+        if t is None:
+            t_key = ndb.Key('Todo', int(task_id), parent=s.room)
+            t = t_key.get()
+        else:
+            # it is a task - reassign
+            t.owner = t.creator
+            t.creator = s.user
+
+        t.status = 1
+        t.put()
+        
+        m = models.ActionItemUpdate(parent=t_key)
+        m.user = s.user
+        m.message = message
+        m.put()
+
+        
+        tasks = []
+        task_updates = {}
+        todos = []
+        todo_updates = {}
+
+        if isinstance(t, models.Task):
+            tasks.append(get_action_item_json(t))
+            replies = []
+            for u in models.ActionItemUpdate.get_all_for_action_item(t.key):
+                replies.append(get_message_json(u))
+            task_updates[t.key.id()] = replies
+            
+        else:
+            todos.append(get_action_item_json(t))
+            replies = []
+            for u in models.ActionItemUpdate.get_all_for_action_item(t.key):
+                replies.append(get_message_json(u))
+            todo_updates[t.key.id()] = replies
+
+        updates = {"tasks": tasks, "todos": todos, "task_updates": task_updates, "todo_updates": todo_updates}
+        for _s in models.HSession.get_sessions_for_user_room(t.owner, s.room):
+            send_updates(_s.sessionid, updates)                
+        
+        return HttpTextResponse('', 200)
+    except Exception as e:
+        logging.info(str(e))    
+        
 # following requests come from google's channel JS API.
 # so, they won't have any CSRF information and hence the exempt
 @csrf_exempt    
