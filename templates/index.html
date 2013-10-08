@@ -83,4 +83,22 @@
     </div>
   </div>
 </div>
+<div id="search" style="display: none;">
+  <div id="search_area">
+    &nbsp;
+    <form action="javascript:void(0)">
+      <div>
+        <input type="text" id="search_query_string" style="height: 25px;
+        width: 250px; border: gray 1px solid; font: inherit;" />
+        <input type="submit" value="Search" class="hButton"
+        style="height: 25px; width: 60px;"
+        onclick="HAYATE.app.search.searchMessage()"
+        title="Click to search"/>
+      </div>
+      <div id="search_results">
+        &nbsp;
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

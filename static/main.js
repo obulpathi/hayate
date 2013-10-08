@@ -31,6 +31,9 @@ HAYATE.app.tasks = {};
 // all user related components go here
 HAYATE.app.users = {};
 
+// all search related components go here
+HAYATE.app.search = {};
+
 // all the utilities go here
 HAYATE.util = {};
 
@@ -81,17 +84,31 @@ HAYATE.core.createElement = function(type, id)
 };
 
 // Implementation of application functionalities
-HAYATE.app.gotoRoom = function ()
+HAYATE.app.gotoRoom = function (conv_id)
 {
     var dom = document.getElementById('chatroom');
     dom.style.display = 'inline';
     dom = document.getElementById('taskstodo');
     dom.style.display = 'none';
+    dom = document.getElementById('search');
+    dom.style.display = 'none';
     
     var roomlink = document.getElementById('room_link');
     roomlink.classList.add('main_menu_selected');
     var taskslink = document.getElementById('taskstodo_link');
-    taskslink.classList.remove('main_menu_selected');    
+    taskslink.classList.remove('main_menu_selected');
+    var searchlink = document.getElementById('search_link');
+    searchlink.classList.remove('main_menu_selected');
+
+    if(conv_id !== undefined)
+    {
+        var conv = document.getElementById(conv_id);
+        if(conv)
+        {
+            conv.style.backgroundColor = 'rgba(223, 210, 65, 0.69)';
+            conv.scrollIntoView();
+        }
+    }
 };
 
 HAYATE.app.gotoTasksView = function ()
@@ -100,12 +117,34 @@ HAYATE.app.gotoTasksView = function ()
     dom.style.display = 'inline';
     dom = document.getElementById('chatroom');
     dom.style.display = 'none';
+    dom = document.getElementById('search');
+    dom.style.display = 'none';
     
     var taskslink = document.getElementById('taskstodo_link');
     taskslink.classList.add('main_menu_selected');
     var roomlink = document.getElementById('room_link');
     roomlink.classList.remove('main_menu_selected');
+    var searchlink = document.getElementById('search_link');
+    searchlink.classList.remove('main_menu_selected');    
 };
+
+HAYATE.app.gotoSearch = function ()
+{
+    var dom = document.getElementById('search');
+    dom.style.display = 'inline';
+    dom = document.getElementById('taskstodo');
+    dom.style.display = 'none';
+    dom = document.getElementById('chatroom');
+    dom.style.display = 'none';
+    
+    var roomlink = document.getElementById('room_link');
+    roomlink.classList.remove('main_menu_selected');
+    var taskslink = document.getElementById('taskstodo_link');
+    taskslink.classList.remove('main_menu_selected');
+    var searchlink = document.getElementById('search_link');
+    searchlink.classList.add('main_menu_selected');
+};
+
 
 /**
  * makes AJAX call to the server to add the user to a current room 
@@ -1284,4 +1323,66 @@ HAYATE.app.tasks.closeTask = function (task_id)
     document.getElementById(task_id).remove();
 
     httpreq.send('task_id='+task_id+'&message='+response.value);
+};
+
+HAYATE.app.search.searchMessage = function ()
+{
+    var httpreq = HAYATE.core.getXMLHttpRequest();
+    if(!httpreq)
+        return;
+
+    var query_string = document.getElementById('search_query_string').value
+
+    if(query_string === "")
+        return;
+    
+    httpreq.open("GET", "/q?q="+query_string+"&o=0");
+
+    httpreq.onreadystatechange = function()
+    {
+        if(httpreq.readyState === 4 && httpreq.status === 200)
+        {
+            var search_results = JSON.parse(httpreq.responseText);
+            var searchResults = document.getElementById('search_results');
+            
+            var searchResultsInner = document.getElementById('search_results_inner');
+            if(searchResultsInner)
+            {
+                searchResultsInner.remove();
+            }
+            searchResultsInner = document.createElement('div');
+            searchResultsInner.id = 'search_results_inner';
+            var noOfResults = document.createElement('div');
+            noOfResults.innerHTML = 'Your query returned ' + search_results.length + ' results';
+            noOfResults.style.textDecoration = 'underline';
+            searchResultsInner.appendChild(noOfResults);
+            
+            for(var i = 0; i < search_results.length; i++)
+            {
+                searchResultsInner.appendChild(HAYATE.app.search.composeAResult(search_results[i]));
+            }
+            searchResults.appendChild(searchResultsInner);
+        }
+    };
+    
+    httpreq.send();        
+};
+
+HAYATE.app.search.composeAResult = function (result)
+{
+    var divElement = document.createElement('div');
+    divElement.innerHTML = result.message;
+    divElement.style.borderBottom = 'gray 1px solid';
+    divElement.style.cursor = 'pointer';
+    divElement.onclick = HAYATE.app.search.redirectToConversation;
+    divElement.setAttribute('goto_conv', result.convid);
+    return divElement;
+};
+
+HAYATE.app.search.redirectToConversation = function (event)
+{
+    var element = event.currentTarget;
+    var conv_id = element.getAttribute('goto_conv');
+    HAYATE.app.gotoRoom(conv_id);
+    event.stopPropagation();
 };

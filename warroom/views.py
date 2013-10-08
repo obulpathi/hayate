@@ -13,7 +13,8 @@ from django.views.decorators.csrf import csrf_exempt
 
 from warroom import models
 from warroom import salt
-from warroom.library import HttpTextResponse, EmailInput
+from warroom import indexer
+from warroom.library import HttpTextResponse, EmailInput, HttpJsonResponse
 from warroom.library import globalKey, randomString
 
 # --------- decorators --------
@@ -107,6 +108,19 @@ def get_action_item_json(a):
                         a.key.id(), type_)
     msg = msg.replace("'", "\'")
 
+    return json.loads(msg, strict=False)
+
+def get_search_result_json(s):
+    _msgformat = '''{
+    "timestamp": "%s",
+    "user": "%s",
+    "convid": "%s",
+    "message": "%s",
+    "useremail": "%s"
+    }'''
+
+    msg = _msgformat % (s['datetime'], s['username'], s['conv_id'], s['message'], s['user_email'])
+    logging.info(msg)
     return json.loads(msg, strict=False)
 
 def encode_password(p):
@@ -436,6 +450,15 @@ def add_message(request):
     m.message = message
     m.put()
 
+    try:
+        # index the message
+        indexer.index_msg(m,
+                          conv_id if conv_id is not None else str(m.key.id()),
+                          r.key.id()
+            )
+    except Exception as e:
+        logging.error('views::add_message exception caught: ' + str(e))
+
     messages = []
     try:
         messages.append(get_message_json(m))
@@ -719,7 +742,42 @@ def close_task(request):
         
         return HttpTextResponse('', 200)
     except Exception as e:
-        logging.info(str(e))    
+        logging.info(str(e))
+
+@login_required
+def search_message(request):
+    """ reads the query string from request and publishes the results
+    """
+
+    s = get_session(request)
+    
+    query = request.GET.get('q', None)
+    offset = request.GET.get('o', None)
+
+    if query is None or offset is None:
+        return HttpTextResponse(400, 'No query string or offset value.')
+
+    query_string = 'room_id=%s %s' % (str(s.room.id()), query)
+
+    offset = int(offset)
+    try:
+        search_results = []
+        results = indexer.search_msg(query_string, 10, offset)
+        for doc in results:
+            res = {}
+            for field in doc.fields:
+                name = field.name
+                value = field.value
+                if name == 'datetime':
+                    value = str(value.strftime('%Y/%m/%d %H:%M:%S'))
+                res[name] = value
+            search_results.append(get_search_result_json(res))
+        logging.info(str(search_results))
+        return HttpJsonResponse(json.dumps(search_results), 200)
+    except Exception as e:
+        logging.error('views::search_message exception caught: ' + str(e))
+        
+    return HttpTextResponse('{}', 200)
         
 # following requests come from google's channel JS API.
 # so, they won't have any CSRF information and hence the exempt

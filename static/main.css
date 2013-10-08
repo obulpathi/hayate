@@ -26,7 +26,7 @@ textarea
     position: relative;
     min-height: 800px;
 }
-#header { height: 50px; }
+#header { height: 60px; }
 #left_header { display: inline; float: left; }
 #right_header { display: inline; float: right; }
 #detail { position: absolute; }
@@ -74,6 +74,12 @@ textarea
 {
     box-shadow: 2px 2px 2px;
     background-color: white;
+}
+#search_area
+{
+    height: 400px;
+    text-align: left;
+    
 }
 .heading { text-align: center; }
 .main_menu_selected { background-color: #A599FF; border-radius: 5px 5px 0 0; height: 25px; padding: 0 5px 3px 5px; }
